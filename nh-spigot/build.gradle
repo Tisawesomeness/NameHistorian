@@ -1,0 +1,29 @@
+plugins {
+    id "com.github.johnrengelman.shadow" version "${shadow_version}"
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'spigotmc-repo'
+        url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/'
+    }
+}
+
+dependencies {
+    implementation project(":nh-core")
+    compileOnly 'org.spigotmc:spigot-api:1.19-R0.1-SNAPSHOT'
+}
+
+processResources {
+    def props = [version: version]
+    inputs.properties props
+    filteringCharset 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand props
+    }
+}
+
+java {
+    archivesBaseName = rootProject.name + "-Spigot"
+}

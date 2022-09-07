@@ -1,0 +1,6 @@
+name: NameHistorian
+version: '${version}'
+description: "Records and looks up player name history"
+main: com.tisawesomeness.namehistorian.spigot.NameHistorianSpigot
+api-version: 1.19
+authors: [ Tis_awesomeness ]
