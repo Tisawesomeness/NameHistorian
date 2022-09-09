@@ -2,6 +2,8 @@ package com.tisawesomeness.namehistorian.spigot;
 
 import com.tisawesomeness.namehistorian.NameHistorian;
 
+import org.bukkit.OfflinePlayer;
+import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import javax.annotation.Nullable;
@@ -9,6 +11,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 
 public final class NameHistorianSpigot extends JavaPlugin {
 
@@ -24,7 +29,9 @@ public final class NameHistorianSpigot extends JavaPlugin {
         } catch (IOException | SQLException ex) {
             throw new RuntimeException(ex);
         }
+
         getServer().getPluginManager().registerEvents(new JoinListener(this), this);
+        Objects.requireNonNull(getCommand("history")).setExecutor(new HistoryCommand(this));
     }
 
     public NameHistorian getHistorian() {
@@ -32,6 +39,27 @@ public final class NameHistorianSpigot extends JavaPlugin {
             throw new IllegalStateException("Historian is not initialized");
         }
         return historian;
+    }
+
+    public Optional<OfflinePlayer> getPlayer(String playerNameOrUUID) {
+        // Longer usernames are not allowed in (at least) 1.19
+        if (playerNameOrUUID.length() <= 16) {
+            return Optional.ofNullable(getServer().getPlayer(playerNameOrUUID));
+        }
+        try {
+            OfflinePlayer p = getServer().getOfflinePlayer(UUID.fromString(playerNameOrUUID));
+            // OfflinePlayer returned even if player never seen, check if player seen
+            if (p.getLastPlayed() == 0) {
+                return Optional.empty();
+            }
+            return Optional.of(p);
+        } catch (IllegalArgumentException ignored) {
+            return Optional.empty();
+        }
+    }
+
+    public void sendMessage(CommandSender sender, String msg, Object... args) {
+        sender.sendMessage("§7[§9NH§7]§r " + String.format(msg, args));
     }
 
 }
