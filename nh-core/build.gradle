@@ -1,3 +1,7 @@
 repositories {
     mavenCentral()
 }
+
+dependencies {
+    implementation 'org.xerial:sqlite-jdbc:3.39.2.1'
+}
