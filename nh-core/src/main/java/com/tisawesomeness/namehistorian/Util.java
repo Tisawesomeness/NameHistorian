@@ -1,7 +1,13 @@
 package com.tisawesomeness.namehistorian;
 
 import javax.annotation.Nullable;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class Util {
 
@@ -15,6 +21,28 @@ public class Util {
      */
     public static <T, R> @Nullable R mapNullable(@Nullable T nullable, Function<T, R> mapper) {
         return nullable == null ? null : mapper.apply(nullable);
+    }
+
+    /**
+     * Reads an embedded resource file as a string.
+     * @param name The name of the resource file
+     * @return The file contents
+     */
+    public static String loadResource(String name) {
+        InputStream is = openResource(name);
+        try (InputStreamReader isr = new InputStreamReader(is, StandardCharsets.UTF_8);
+             BufferedReader br = new BufferedReader(isr)) {
+            return br.lines().collect(Collectors.joining("\n"));
+        } catch (IOException ex) {
+            throw new AssertionError("An IOException when closing a resource stream should never happen.");
+        }
+    }
+    private static InputStream openResource(String name) {
+        InputStream is = Util.class.getClassLoader().getResourceAsStream(name);
+        if (is == null) {
+            throw new IllegalArgumentException("The resource was not found!");
+        }
+        return is;
     }
 
 }
