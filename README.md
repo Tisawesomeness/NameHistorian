@@ -1,8 +1,18 @@
 # NameHistorian
 
-A plugin that records player name changes.
+Records and displays player name changes.
+
+![Screenshot of /history command](docs/demo.png)
 
 **Minecraft Version:** 1.19+
+
+## Commands
+
+### `/history <player>`
+
+Displays the name history of a player.
+
+**Permission:** `namehistorian.history` (default: op)
 
 ## Building
 
