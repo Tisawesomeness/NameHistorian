@@ -30,7 +30,7 @@ public final class NameHistorianSpigot extends JavaPlugin {
             throw new RuntimeException(ex);
         }
 
-        getServer().getPluginManager().registerEvents(new JoinListener(this), this);
+        getServer().getPluginManager().registerEvents(new SeenListener(this), this);
         Objects.requireNonNull(getCommand("history")).setExecutor(new HistoryCommand(this));
     }
 
