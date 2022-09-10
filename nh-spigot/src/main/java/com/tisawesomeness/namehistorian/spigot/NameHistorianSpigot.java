@@ -1,9 +1,11 @@
 package com.tisawesomeness.namehistorian.spigot;
 
 import com.tisawesomeness.namehistorian.NameHistorian;
+import com.tisawesomeness.namehistorian.NamedPlayer;
 
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import javax.annotation.Nullable;
@@ -11,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,6 +35,32 @@ public final class NameHistorianSpigot extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new SeenListener(this), this);
         Objects.requireNonNull(getCommand("history")).setExecutor(new HistoryCommand(this));
+
+        try {
+            recordOnlinePlayers();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            // Non-fatal, keep plugin running
+        }
+    }
+
+    @Override
+    public void onDisable() {
+        try {
+            recordOnlinePlayers();
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private void recordOnlinePlayers() throws SQLException {
+        List<NamedPlayer> players = getServer().getOnlinePlayers().stream()
+                .map(this::toNamedPlayer)
+                .toList();
+        getHistorian().recordNames(players);
+    }
+    private NamedPlayer toNamedPlayer(Player player) {
+        return new NamedPlayer(player.getUniqueId(), player.getName());
     }
 
     public NameHistorian getHistorian() {

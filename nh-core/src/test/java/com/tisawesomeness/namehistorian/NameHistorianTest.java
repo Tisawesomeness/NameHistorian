@@ -73,4 +73,18 @@ public class NameHistorianTest {
                 .containsExactly("test2");
     }
 
+    @Test
+    public void testBulkRecord() throws SQLException {
+        historian.recordNames(List.of(
+                new NamedPlayer(TEST_UUID, "test"),
+                new NamedPlayer(TEST_UUID_2, "test2")
+        ));
+        assertThat(historian.getNameHistory(TEST_UUID))
+                .extracting(NameRecord::username)
+                .containsExactly("test");
+        assertThat(historian.getNameHistory(TEST_UUID_2))
+                .extracting(NameRecord::username)
+                .containsExactly("test2");
+    }
+
 }

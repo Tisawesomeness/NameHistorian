@@ -9,6 +9,7 @@ import javax.sql.DataSource;
 import java.nio.file.Path;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -93,22 +94,43 @@ public final class NameHistorian {
     /**
      * Records a player name.
      * If the player was previously seen with the given username, updates the last seen time.
-     * Otherwise, records a name change.
+     * Otherwise, records a name change at the current time.
      * @param uuid the player's UUID
      * @param username the player's username
      * @throws SQLException on database error
      */
     public void recordName(UUID uuid, String username) throws SQLException {
-        NameDBRecord nr = findLatestNameRecord(uuid);
+        asTransaction(con -> recordName(con, uuid, username));
+    }
+
+    /**
+     * Records a collection of player names.
+     * If the player was previously seen with the given username, updates the last seen time.
+     * Otherwise, records a name change at the current time.
+     * @param players the player UUIDs and usernames
+     * @throws SQLException on database error
+     */
+    public void recordNames(Collection<NamedPlayer> players) throws SQLException {
+        if (players.isEmpty()) {
+            return; // Skip making db connection
+        }
+        asTransaction(con -> {
+            for (NamedPlayer np : players) {
+                recordName(con, np.uuid(), np.username());
+            }
+        });
+    }
+
+    private void recordName(Connection con, UUID uuid, String username) throws SQLException {
+        NameDBRecord nr = findLatestNameRecord(con, uuid);
         if (nr != null && nr.username().equals(username)) {
-            updateLastSeenTime(nr);
+            updateLastSeenTime(con, nr);
         } else {
-            recordNewName(uuid, username);
+            recordNewName(con, uuid, username);
         }
     }
 
-    private @Nullable NameDBRecord findLatestNameRecord(UUID uuid) throws SQLException {
-        @Cleanup Connection con = source.getConnection();
+    private @Nullable NameDBRecord findLatestNameRecord(Connection con, UUID uuid) throws SQLException {
         @Cleanup PreparedStatement st = con.prepareStatement(READ_LATEST_SQL);
         st.setString(1, uuid.toString());
         @Cleanup ResultSet rs = st.executeQuery();
@@ -118,16 +140,14 @@ public final class NameHistorian {
         return null;
     }
 
-    private void updateLastSeenTime(NameDBRecord nr) throws SQLException {
-        @Cleanup Connection con = source.getConnection();
+    private void updateLastSeenTime(Connection con, NameDBRecord nr) throws SQLException {
         @Cleanup PreparedStatement st = con.prepareStatement(UPDATE_LAST_SEEN_SQL);
         st.setLong(1, System.currentTimeMillis());
         st.setInt(2, nr.id());
         st.executeUpdate();
     }
 
-    private void recordNewName(UUID uuid, String username) throws SQLException {
-        @Cleanup Connection con = source.getConnection();
+    private void recordNewName(Connection con, UUID uuid, String username) throws SQLException {
         @Cleanup PreparedStatement st = con.prepareStatement(INSERT_NAME_RECORD_SQL);
         st.setString(1, uuid.toString());
         st.setString(2, username);
@@ -169,6 +189,22 @@ public final class NameHistorian {
     private @Nullable Long readNullableLong(ResultSet rs, String column) throws SQLException {
         long l = rs.getLong(column);
         return rs.wasNull() ? null : l;
+    }
+
+    private void asTransaction(SqlFunction func) throws SQLException {
+        @Cleanup Connection con = source.getConnection();
+        con.setAutoCommit(false);
+        try {
+            func.accept(con);
+            con.commit();
+        } catch (Exception e) {
+            con.rollback();
+            throw e;
+        }
+    }
+    @FunctionalInterface
+    private interface SqlFunction {
+        void accept(Connection con) throws SQLException;
     }
 
 }
