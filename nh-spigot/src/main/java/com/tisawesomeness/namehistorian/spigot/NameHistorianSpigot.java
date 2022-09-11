@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public final class NameHistorianSpigot extends JavaPlugin {
 
@@ -46,17 +47,19 @@ public final class NameHistorianSpigot extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        try {
-            recordOnlinePlayers();
-        } catch (SQLException ex) {
-            throw new RuntimeException(ex);
+        if (historian != null) {
+            try {
+                recordOnlinePlayers();
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
         }
     }
 
     private void recordOnlinePlayers() throws SQLException {
         List<NamedPlayer> players = getServer().getOnlinePlayers().stream()
                 .map(this::toNamedPlayer)
-                .toList();
+                .collect(Collectors.toList());
         getHistorian().recordNames(players);
     }
     private NamedPlayer toNamedPlayer(Player player) {

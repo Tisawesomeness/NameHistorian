@@ -1,6 +1,11 @@
 package com.tisawesomeness.namehistorian;
 
+import lombok.Value;
+
 import java.util.UUID;
 
-public record NamedPlayer(UUID uuid, String username) {
+@Value
+public class NamedPlayer {
+    UUID uuid;
+    String username;
 }

@@ -21,6 +21,12 @@ subprojects {
     test {
         useJUnitPlatform()
     }
+
+    java {
+        sourceCompatibility = '1.8'
+        compileJava.options.encoding = 'UTF-8'
+        compileTestJava.options.encoding = "UTF-8"
+    }
 }
 
 def outputTasks() {

@@ -17,36 +17,31 @@ public final class NameHistorian {
 
     private static final int VERSION = 0;
 
-    private static final String GET_VERSION_SQL = """
-            SELECT `version` FROM `version`;
-            """;
-    private static final String READ_ALL_HISTORY_SQL = """
-            SELECT `id`, `username`, `first_seen_time`, `detected_time`, `last_seen_time`
-            FROM `name_history`
-            WHERE `uuid` = ?
-            ORDER BY `first_seen_time` DESC;
-            """;
-    private static final String READ_LATEST_SQL = """
-            SELECT `id`, `username`, `first_seen_time`, `detected_time`, `last_seen_time`
-            FROM `name_history`
-            WHERE `uuid` = ?
-            ORDER BY `first_seen_time` DESC
-            LIMIT 1;
-            """;
-    private static final String UPDATE_LAST_SEEN_SQL = """
-            UPDATE `name_history`
-            SET `last_seen_time` = ?
-            WHERE `id` = ?;
-            """;
-    private static final String INSERT_NAME_RECORD_SQL = """
-            INSERT INTO `name_history` (
-                `uuid`,
-                `username`,
-                `first_seen_time`,
-                `detected_time`,
-                `last_seen_time`
-            ) VALUES (?, ?, ?, ?, ?);
-            """;
+    private static final String GET_VERSION_SQL =
+            "SELECT `version` FROM `version`;";
+    private static final String READ_ALL_HISTORY_SQL =
+            "SELECT `id`, `username`, `first_seen_time`, `detected_time`, `last_seen_time`\n" +
+            "FROM `name_history`\n" +
+            "WHERE `uuid` = ?\n" +
+            "ORDER BY `first_seen_time` DESC;";
+    private static final String READ_LATEST_SQL =
+            "SELECT `id`, `username`, `first_seen_time`, `detected_time`, `last_seen_time`\n" +
+            "FROM `name_history`\n" +
+            "WHERE `uuid` = ?\n" +
+            "ORDER BY `first_seen_time` DESC\n" +
+            "LIMIT 1;";
+    private static final String UPDATE_LAST_SEEN_SQL =
+            "UPDATE `name_history`\n" +
+            "SET `last_seen_time` = ?\n" +
+            "WHERE `id` = ?;";
+    private static final String INSERT_NAME_RECORD_SQL =
+            "INSERT INTO `name_history` (\n" +
+            "    `uuid`,\n" +
+            "    `username`,\n" +
+            "    `first_seen_time`,\n" +
+            "    `detected_time`,\n" +
+            "    `last_seen_time`\n" +
+            ") VALUES (?, ?, ?, ?, ?);";
 
     private final DataSource source;
 
@@ -61,7 +56,6 @@ public final class NameHistorian {
     public NameHistorian(Path databasePath) throws SQLException {
         SQLiteDataSource ds = new SQLiteConnectionPoolDataSource();
         ds.setUrl("jdbc:sqlite:" + databasePath.toFile().getAbsolutePath());
-        ds.setEncoding("UTF-8");
         source = ds;
 
         runScript("schema.sql");
@@ -84,11 +78,19 @@ public final class NameHistorian {
         String sql = Util.loadResource(scriptName);
         @Cleanup Connection con = source.getConnection();
         for (String statement : sql.split(";")) {
-            if (!statement.isBlank()) {
+            if (!isBlank(statement)) {
                 @Cleanup Statement st = con.createStatement();
                 st.execute(statement);
             }
         }
+    }
+    private static boolean isBlank(String str) {
+        for (int i = 0; i < str.length(); i++) {
+            if (!Character.isWhitespace(str.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -116,14 +118,14 @@ public final class NameHistorian {
         }
         asTransaction(con -> {
             for (NamedPlayer np : players) {
-                recordName(con, np.uuid(), np.username());
+                recordName(con, np.getUuid(), np.getUsername());
             }
         });
     }
 
     private void recordName(Connection con, UUID uuid, String username) throws SQLException {
         NameDBRecord nr = findLatestNameRecord(con, uuid);
-        if (nr != null && nr.username().equals(username)) {
+        if (nr != null && nr.getUsername().equals(username)) {
             updateLastSeenTime(con, nr);
         } else {
             recordNewName(con, uuid, username);
@@ -143,7 +145,7 @@ public final class NameHistorian {
     private void updateLastSeenTime(Connection con, NameDBRecord nr) throws SQLException {
         @Cleanup PreparedStatement st = con.prepareStatement(UPDATE_LAST_SEEN_SQL);
         st.setLong(1, System.currentTimeMillis());
-        st.setInt(2, nr.id());
+        st.setInt(2, nr.getId());
         st.executeUpdate();
     }
 

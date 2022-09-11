@@ -10,7 +10,7 @@ import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
+import java.util.Arrays;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,10 +43,10 @@ public class NameHistorianTest {
         assertThat(historian.getNameHistory(TEST_UUID)).hasSize(1);
 
         NameRecord nr = historian.getNameHistory(TEST_UUID).get(0);
-        assertThat(nr.username()).isEqualTo("test");
-        assertThat(nr.uuid()).isEqualTo(TEST_UUID);
+        assertThat(nr.getUsername()).isEqualTo("test");
+        assertThat(nr.getUuid()).isEqualTo(TEST_UUID);
 
-        assertThat(List.of(nr.firstSeenTime(), nr.detectedTime(), nr.lastSeenTime()))
+        assertThat(Arrays.asList(nr.getFirstSeenTime(), nr.getDetectedTime(), nr.getLastSeenTime()))
                 .allSatisfy(t -> assertThat(t).isBetween(Instant.now().minus(GRACE_PERIOD), Instant.now()));
     }
 
@@ -56,7 +56,7 @@ public class NameHistorianTest {
         historian.recordName(TEST_UUID, "test2");
 
         assertThat(historian.getNameHistory(TEST_UUID))
-                .extracting(NameRecord::username)
+                .extracting(NameRecord::getUsername)
                 .containsExactly("test2", "test");
     }
 
@@ -66,24 +66,24 @@ public class NameHistorianTest {
         historian.recordName(TEST_UUID_2, "test2");
 
         assertThat(historian.getNameHistory(TEST_UUID))
-                .extracting(NameRecord::username)
+                .extracting(NameRecord::getUsername)
                 .containsExactly("test");
         assertThat(historian.getNameHistory(TEST_UUID_2))
-                .extracting(NameRecord::username)
+                .extracting(NameRecord::getUsername)
                 .containsExactly("test2");
     }
 
     @Test
     public void testBulkRecord() throws SQLException {
-        historian.recordNames(List.of(
+        historian.recordNames(Arrays.asList(
                 new NamedPlayer(TEST_UUID, "test"),
                 new NamedPlayer(TEST_UUID_2, "test2")
         ));
         assertThat(historian.getNameHistory(TEST_UUID))
-                .extracting(NameRecord::username)
+                .extracting(NameRecord::getUsername)
                 .containsExactly("test");
         assertThat(historian.getNameHistory(TEST_UUID_2))
-                .extracting(NameRecord::username)
+                .extracting(NameRecord::getUsername)
                 .containsExactly("test2");
     }
 

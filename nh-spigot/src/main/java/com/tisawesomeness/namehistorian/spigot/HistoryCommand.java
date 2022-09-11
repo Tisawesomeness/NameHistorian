@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @AllArgsConstructor
 public class HistoryCommand implements CommandExecutor, TabCompleter {
@@ -35,7 +36,7 @@ public class HistoryCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         Optional<OfflinePlayer> playerOpt = plugin.getPlayer(args[0]);
-        if (playerOpt.isEmpty()) {
+        if (!playerOpt.isPresent()) {
             plugin.sendMessage(sender, ChatColor.RED + "Player not found.");
             return true;
         }
@@ -54,15 +55,15 @@ public class HistoryCommand implements CommandExecutor, TabCompleter {
             plugin.sendMessage(sender, ChatColor.RED + "No name history found.");
             return;
         }
-        UUID uuid = nameHistory.get(0).uuid();
+        UUID uuid = nameHistory.get(0).getUuid();
         plugin.sendMessage(sender, "%sName history for %s%s", ChatColor.GOLD, ChatColor.GREEN, uuid);
         for (int i = 0; i < nameHistory.size(); i++) {
             NameRecord nr = nameHistory.get(i);
             int changeNumber = nameHistory.size() - i;
-            plugin.sendMessage(sender, "%s%d. %s%s", ChatColor.BLUE, changeNumber, ChatColor.LIGHT_PURPLE, nr.username());
+            plugin.sendMessage(sender, "%s%d. %s%s", ChatColor.BLUE, changeNumber, ChatColor.LIGHT_PURPLE, nr.getUsername());
             plugin.sendMessage(sender, "%sFrom: %s%s, %sTo: %s%s",
-                    ChatColor.BLUE, ChatColor.GREEN, format(nr.firstSeenTime()),
-                    ChatColor.BLUE, ChatColor.GREEN, format(nr.lastSeenTime())
+                    ChatColor.BLUE, ChatColor.GREEN, format(nr.getFirstSeenTime()),
+                    ChatColor.BLUE, ChatColor.GREEN, format(nr.getLastSeenTime())
             );
         }
     }
@@ -75,7 +76,7 @@ public class HistoryCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             List<String> completions = plugin.getServer().getOnlinePlayers().stream()
                     .map(Player::getName)
-                    .toList();
+                    .collect(Collectors.toList());
             return StringUtil.copyPartialMatches(args[0], completions, new ArrayList<>());
         }
         return null;
