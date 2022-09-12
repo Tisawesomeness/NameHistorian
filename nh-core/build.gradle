@@ -3,5 +3,6 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.xerial:sqlite-jdbc:3.39.2.1'
+    implementation 'org.xerial:sqlite-jdbc:3.39.3.0'
+    implementation 'com.google.code.gson:gson:2.8.9' // same version spigot uses
 }

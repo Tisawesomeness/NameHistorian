@@ -9,7 +9,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class Util {
+public final class Util {
+    private Util() { }
 
     /**
      * Applies a function to a value if it is not null.
@@ -21,6 +22,20 @@ public class Util {
      */
     public static <T, R> @Nullable R mapNullable(@Nullable T nullable, Function<T, R> mapper) {
         return nullable == null ? null : mapper.apply(nullable);
+    }
+
+    /**
+     * Checks if a string contains only whitespace
+     * @param str the string
+     * @return true if the string contains only whitespace
+     */
+    public static boolean isBlank(String str) {
+        for (int i = 0; i < str.length(); i++) {
+            if (!Character.isWhitespace(str.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

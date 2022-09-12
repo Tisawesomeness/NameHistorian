@@ -1,6 +1,9 @@
 package com.tisawesomeness.namehistorian;
 
+import com.tisawesomeness.namehistorian.testutil.MojangLookupMock;
+
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -11,16 +14,18 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class NameHistorianTest {
 
-    private static final UUID TEST_UUID = UUID.fromString("f6489b79-7a9f-49e2-980e-265a05dbc3af");
-    private static final UUID TEST_UUID_2 = UUID.fromString("853c80ef-3c37-49fd-aa49-938b674adae6");
+    private static final UUID TIS_UUID = UUID.fromString("f6489b79-7a9f-49e2-980e-265a05dbc3af");
+    private static final Instant TIS_TIME = Instant.ofEpochMilli(1438695830000L);
+    private static final UUID JEB_UUID = UUID.fromString("853c80ef-3c37-49fd-aa49-938b674adae6");
+    private static final UUID DUMMY_UUID = UUID.fromString("f6489b79-7a9f-49e2-980e-265a05dbc3a0");
     private static final Duration GRACE_PERIOD = Duration.ofMinutes(1);
-
     private NameHistorian historian;
 
     @BeforeEach
@@ -29,22 +34,22 @@ public class NameHistorianTest {
         Files.createDirectories(parent);
         Path dbPath = parent.resolve("test.db");
         Files.deleteIfExists(dbPath);
-        historian = new NameHistorian(dbPath);
+        historian = new NameHistorian(dbPath, new MojangLookupMock());
     }
 
     @Test
     public void testBlank() throws SQLException {
-        assertThat(historian.getNameHistory(TEST_UUID)).isEmpty();
+        assertThat(historian.getNameHistory(TIS_UUID)).isEmpty();
     }
 
     @Test
     public void testHistory() throws SQLException {
-        historian.recordName(TEST_UUID, "test");
-        assertThat(historian.getNameHistory(TEST_UUID)).hasSize(1);
+        historian.recordName(TIS_UUID, "test");
+        assertThat(historian.getNameHistory(TIS_UUID)).hasSize(1);
 
-        NameRecord nr = historian.getNameHistory(TEST_UUID).get(0);
+        NameRecord nr = historian.getNameHistory(TIS_UUID).get(0);
         assertThat(nr.getUsername()).isEqualTo("test");
-        assertThat(nr.getUuid()).isEqualTo(TEST_UUID);
+        assertThat(nr.getUuid()).isEqualTo(TIS_UUID);
 
         assertThat(Arrays.asList(nr.getFirstSeenTime(), nr.getDetectedTime(), nr.getLastSeenTime()))
                 .allSatisfy(t -> assertThat(t).isBetween(Instant.now().minus(GRACE_PERIOD), Instant.now()));
@@ -52,23 +57,23 @@ public class NameHistorianTest {
 
     @Test
     public void testHistory2() throws SQLException {
-        historian.recordName(TEST_UUID, "test");
-        historian.recordName(TEST_UUID, "test2");
+        historian.recordName(TIS_UUID, "test");
+        historian.recordName(TIS_UUID, "test2");
 
-        assertThat(historian.getNameHistory(TEST_UUID))
+        assertThat(historian.getNameHistory(TIS_UUID))
                 .extracting(NameRecord::getUsername)
                 .containsExactly("test2", "test");
     }
 
     @Test
     public void testSeparateHistory() throws SQLException {
-        historian.recordName(TEST_UUID, "test");
-        historian.recordName(TEST_UUID_2, "test2");
+        historian.recordName(TIS_UUID, "test");
+        historian.recordName(JEB_UUID, "test2");
 
-        assertThat(historian.getNameHistory(TEST_UUID))
+        assertThat(historian.getNameHistory(TIS_UUID))
                 .extracting(NameRecord::getUsername)
                 .containsExactly("test");
-        assertThat(historian.getNameHistory(TEST_UUID_2))
+        assertThat(historian.getNameHistory(JEB_UUID))
                 .extracting(NameRecord::getUsername)
                 .containsExactly("test2");
     }
@@ -76,15 +81,104 @@ public class NameHistorianTest {
     @Test
     public void testBulkRecord() throws SQLException {
         historian.recordNames(Arrays.asList(
-                new NamedPlayer(TEST_UUID, "test"),
-                new NamedPlayer(TEST_UUID_2, "test2")
+                new NamedPlayer(TIS_UUID, "test"),
+                new NamedPlayer(JEB_UUID, "test2")
         ));
-        assertThat(historian.getNameHistory(TEST_UUID))
+        assertThat(historian.getNameHistory(TIS_UUID))
                 .extracting(NameRecord::getUsername)
                 .containsExactly("test");
-        assertThat(historian.getNameHistory(TEST_UUID_2))
+        assertThat(historian.getNameHistory(JEB_UUID))
                 .extracting(NameRecord::getUsername)
                 .containsExactly("test2");
+    }
+
+    @Test
+    public void testSaveHistory() throws SQLException, IOException {
+        historian.saveMojangHistory(TIS_UUID);
+
+        List<NameRecord> history = historian.getNameHistory(TIS_UUID);
+        checkHistory(history, TIS_TIME);
+    }
+
+    @Test
+    @Disabled("Functionality not complete")
+    public void testSaveHistoryAlreadyExists() throws SQLException, IOException {
+        historian.recordName(TIS_UUID, "Tis_awesomeness");
+        historian.saveMojangHistory(TIS_UUID);
+
+        List<NameRecord> history = historian.getNameHistory(TIS_UUID);
+        checkHistory(history, TIS_TIME);
+    }
+
+    @Test
+    @Disabled("Functionality not complete")
+    public void testSaveHistoryPreviouslyExists() throws SQLException, IOException {
+        NameRecord nr = new NameRecord(TIS_UUID, "tis_awesomeness", TIS_TIME.minusSeconds(10), Instant.now(), TIS_TIME.minusSeconds(5));
+        historian.recordName(nr);
+        historian.saveMojangHistory(TIS_UUID);
+
+        List<NameRecord> history = historian.getNameHistory(TIS_UUID);
+        checkHistory(history, TIS_TIME.minusSeconds(10));
+    }
+
+    @Test
+    @Disabled("Functionality not complete")
+    public void testSaveHistoryDuplicate() throws SQLException, IOException {
+        historian.saveMojangHistory(TIS_UUID);
+        historian.saveMojangHistory(TIS_UUID);
+
+        List<NameRecord> history = historian.getNameHistory(TIS_UUID);
+        checkHistory(history, TIS_TIME);
+    }
+
+    private static void checkHistory(List<NameRecord> history, Instant originalFirstSeen) {
+        assertThat(history).hasSize(2);
+        System.out.println(history);
+
+        NameRecord latest = history.get(0);
+        assertThat(latest)
+                .extracting(NameRecord::getUsername, NameRecord::getUuid, NameRecord::getFirstSeenTime)
+                .containsExactly("Tis_awesomeness", TIS_UUID, TIS_TIME);
+        assertThat(Arrays.asList(latest.getDetectedTime(), latest.getLastSeenTime()))
+                .allSatisfy(t -> assertThat(t).isBetween(Instant.now().minus(GRACE_PERIOD), Instant.now()));
+
+        NameRecord original = history.get(1);
+        assertThat(original)
+                .extracting(NameRecord::getUsername, NameRecord::getUuid, NameRecord::getFirstSeenTime, NameRecord::getLastSeenTime)
+                .containsExactly("tis_awesomeness", TIS_UUID, originalFirstSeen, TIS_TIME);
+        assertThat(original.getDetectedTime())
+                .isBetween(Instant.now().minus(GRACE_PERIOD), Instant.now());
+    }
+
+    @Test
+    public void testSaveHistory1() throws IOException, SQLException {
+        historian.saveMojangHistory(JEB_UUID);
+        List<NameRecord> history = historian.getNameHistory(JEB_UUID);
+
+        assertThat(history).hasSize(1);
+
+        NameRecord original = history.get(0);
+        assertThat(original)
+                .extracting(NameRecord::getUsername, NameRecord::getUuid)
+                .containsExactly("jeb_", JEB_UUID);
+        assertThat(Arrays.asList(original.getFirstSeenTime(), original.getDetectedTime(), original.getLastSeenTime()))
+                .allSatisfy(t -> assertThat(t).isBetween(Instant.now().minus(GRACE_PERIOD), Instant.now()));
+    }
+
+    @Test
+    public void testSaveHistory2() throws IOException, SQLException {
+        historian.saveMojangHistory(DUMMY_UUID);
+        List<NameRecord> history = historian.getNameHistory(DUMMY_UUID);
+
+        assertThat(history).hasSize(3);
+        System.out.println(history);
+
+        NameRecord middle = history.get(1);
+        assertThat(middle)
+                .extracting(NameRecord::getUsername, NameRecord::getUuid, NameRecord::getFirstSeenTime, NameRecord::getLastSeenTime)
+                .containsExactly("dummy2", DUMMY_UUID, TIS_TIME.plusSeconds(1), TIS_TIME.plusSeconds(2));
+        assertThat(middle.getDetectedTime())
+                .isBetween(Instant.now().minus(GRACE_PERIOD), Instant.now());
     }
 
 }

@@ -28,5 +28,8 @@ public class NameRecord {
     public Instant getDetectedTime() {
         return detectedTime == null ? firstSeenTime : detectedTime;
     }
+    public @Nullable Instant getRawDetectedTime() {
+        return detectedTime;
+    }
 
 }
