@@ -3,7 +3,6 @@ package com.tisawesomeness.namehistorian;
 import com.tisawesomeness.namehistorian.testutil.MojangLookupMock;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -100,7 +99,7 @@ public class NameHistorianTest {
         assertThat(historian.saveMojangHistory(TIS_UUID)).isTrue();
 
         List<NameRecord> history = historian.getNameHistory(TIS_UUID);
-        checkHistory(history, TIS_TIME);
+        checkHistory(history);
     }
 
     @Test
@@ -109,7 +108,7 @@ public class NameHistorianTest {
         assertThat(historian.saveMojangHistory(TIS_UUID)).isTrue();
 
         List<NameRecord> history = historian.getNameHistory(TIS_UUID);
-        checkHistory(history, TIS_TIME);
+        checkHistory(history);
     }
 
     @Test
@@ -119,20 +118,19 @@ public class NameHistorianTest {
         assertThat(historian.saveMojangHistory(TIS_UUID)).isTrue();
 
         List<NameRecord> history = historian.getNameHistory(TIS_UUID);
-        checkHistory(history, TIS_TIME.minusSeconds(10));
+        checkHistory(history);
     }
 
     @Test
-    @Disabled("Functionality not complete")
     public void testSaveHistoryDuplicate() throws SQLException, IOException {
-        historian.saveMojangHistory(TIS_UUID);
-        historian.saveMojangHistory(TIS_UUID);
+        assertThat(historian.saveMojangHistory(TIS_UUID)).isTrue();
+        assertThat(historian.saveMojangHistory(TIS_UUID)).isTrue();
 
         List<NameRecord> history = historian.getNameHistory(TIS_UUID);
-        checkHistory(history, TIS_TIME);
+        checkHistory(history);
     }
 
-    private static void checkHistory(List<NameRecord> history, Instant originalFirstSeen) {
+    private static void checkHistory(List<NameRecord> history) {
         assertThat(history).hasSize(2);
 
         NameRecord latest = history.get(0);
@@ -145,7 +143,7 @@ public class NameHistorianTest {
         NameRecord original = history.get(1);
         assertThat(original)
                 .extracting(NameRecord::getUsername, NameRecord::getUuid, NameRecord::getFirstSeenTime, NameRecord::getLastSeenTime)
-                .containsExactly("tis_awesomeness", TIS_UUID, originalFirstSeen, TIS_TIME);
+                .containsExactly("tis_awesomeness", TIS_UUID, NameHistorianTest.TIS_TIME, TIS_TIME);
         assertThat(original.getDetectedTime())
                 .isBetween(Instant.now().minus(GRACE_PERIOD), Instant.now());
     }

@@ -10,10 +10,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.sql.*;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public final class NameHistorian {
@@ -196,9 +193,9 @@ public final class NameHistorian {
         return list;
     }
 
-    // TODO error handling
     /**
      * Requests the player's name history from the Mojang API and saves it to the database.
+     * This will overwrite the player's existing name history.
      * BEWARE: this may error when Mojang disables the API endpoint on September 13th!
      * @param uuid The UUID of the player to look up
      * @return True on success, false if history cannot be looked up
@@ -231,15 +228,8 @@ public final class NameHistorian {
         }
 
         asTransaction(con -> {
-            List<NameRecord> dbHistory = retrieveNameHistory(con, uuid);
-            List<NameRecord> toAdd;
-            if (dbHistory.isEmpty()) {
-                toAdd = records;
-            } else {
-                toAdd = NameRecord.combine(dbHistory, records);
-                deleteHistory(con, uuid);
-            }
-            for (NameRecord nr : toAdd) {
+            deleteHistory(con, uuid);
+            for (NameRecord nr : records) {
                 recordNewName(con, nr);
             }
         });
