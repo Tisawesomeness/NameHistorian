@@ -6,11 +6,13 @@ import org.sqlite.javax.SQLiteConnectionPoolDataSource;
 
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.sql.*;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public final class NameHistorian {
@@ -42,12 +44,8 @@ public final class NameHistorian {
             "    `detected_time`,\n" +
             "    `last_seen_time`\n" +
             ") VALUES (?, ?, ?, ?, ?);";
-    private static final String DELETE_ALL_HISTORY_SQL = "" +
-            "DELETE FROM `name_history`\n" +
-            "WHERE `uuid` = ?;";
 
     private final DataSource source;
-    private final MojangLookup lookup;
 
     /**
      * Initializes NameHistorian by connecting to a SQLite database.
@@ -58,9 +56,6 @@ public final class NameHistorian {
      * @throws IllegalStateException if the database is not at the correct version
      */
     public NameHistorian(Path databasePath) throws SQLException {
-        this(databasePath, new MojangLookupImpl());
-    }
-    NameHistorian(Path databasePath, MojangLookup lookup) throws SQLException {
         SQLiteDataSource ds = new SQLiteConnectionPoolDataSource();
         ds.setUrl("jdbc:sqlite:" + databasePath.toFile().getAbsolutePath());
         source = ds;
@@ -69,8 +64,6 @@ public final class NameHistorian {
         if (getVersion() != VERSION) {
             throw new IllegalStateException("Database version is not " + VERSION);
         }
-
-        this.lookup = lookup;
     }
 
     private int getVersion() throws SQLException {
@@ -180,9 +173,6 @@ public final class NameHistorian {
      */
     public List<NameRecord> getNameHistory(UUID uuid) throws SQLException {
         @Cleanup Connection con = source.getConnection();
-        return retrieveNameHistory(con, uuid);
-    }
-    private List<NameRecord> retrieveNameHistory(Connection con, UUID uuid) throws SQLException {
         @Cleanup PreparedStatement st = con.prepareStatement(READ_ALL_HISTORY_SQL);
         st.setString(1, uuid.toString());
         @Cleanup ResultSet rs = st.executeQuery();
@@ -191,54 +181,6 @@ public final class NameHistorian {
             list.add(readDBRecord(rs, uuid).toNameRecord());
         }
         return list;
-    }
-
-    /**
-     * Requests the player's name history from the Mojang API and saves it to the database.
-     * This will overwrite the player's existing name history.
-     * BEWARE: this may error when Mojang disables the API endpoint on September 13th!
-     * @param uuid The UUID of the player to look up
-     * @return True on success, false if history cannot be looked up
-     * @throws IOException see {@link MojangLookup#fetchNameChanges(UUID)}
-     * @throws SQLException on database error
-     */
-    public boolean saveMojangHistory(UUID uuid) throws IOException, SQLException {
-        List<NameChange> history = lookup.fetchNameChanges(uuid);
-        if (history.isEmpty()) {
-            return false;
-        }
-        List<NameRecord> records = new ArrayList<>();
-        Instant now = Instant.now();
-
-        for (int i = 0; i < history.size(); i++) {
-            NameChange change = history.get(i);
-
-            NameChange next = i + 1 < history.size() ? history.get(i + 1) : null;
-            Instant firstSeen;
-            if (!change.isOriginal()) {
-                firstSeen = change.getChangeTime();
-            } else if (next != null) {
-                firstSeen = next.getChangeTime();
-            } else {
-                firstSeen = now;
-            }
-            Instant lastSeen = next != null ? next.getChangeTime() : now;
-
-            records.add(new NameRecord(uuid, change.getName(), firstSeen, now, lastSeen));
-        }
-
-        asTransaction(con -> {
-            deleteHistory(con, uuid);
-            for (NameRecord nr : records) {
-                recordNewName(con, nr);
-            }
-        });
-        return true;
-    }
-    private void deleteHistory(Connection con, UUID uuid) throws SQLException {
-        @Cleanup PreparedStatement st = con.prepareStatement(DELETE_ALL_HISTORY_SQL);
-        st.setString(1, uuid.toString());
-        st.executeUpdate();
     }
 
     private NameDBRecord readDBRecord(ResultSet rs, UUID uuid) throws SQLException {
