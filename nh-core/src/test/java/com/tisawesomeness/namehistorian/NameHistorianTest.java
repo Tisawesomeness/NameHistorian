@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class NameHistorianTest {
 
@@ -25,6 +26,8 @@ public class NameHistorianTest {
     private static final Instant TIS_TIME = Instant.ofEpochMilli(1438695830000L);
     private static final UUID JEB_UUID = UUID.fromString("853c80ef-3c37-49fd-aa49-938b674adae6");
     private static final UUID DUMMY_UUID = UUID.fromString("f6489b79-7a9f-49e2-980e-265a05dbc3a0");
+    private static final UUID INVALID_UUID = UUID.fromString("f6489b79-7a9f-49e2-980e-265a05dbc3ae");
+    private static final UUID THROWING_UUID = UUID.fromString("e6489b79-7a9f-49e2-980e-265a05dbc3af");
     private static final Duration GRACE_PERIOD = Duration.ofMinutes(1);
     private NameHistorian historian;
 
@@ -94,28 +97,26 @@ public class NameHistorianTest {
 
     @Test
     public void testSaveHistory() throws SQLException, IOException {
-        historian.saveMojangHistory(TIS_UUID);
+        assertThat(historian.saveMojangHistory(TIS_UUID)).isTrue();
 
         List<NameRecord> history = historian.getNameHistory(TIS_UUID);
         checkHistory(history, TIS_TIME);
     }
 
     @Test
-    @Disabled("Functionality not complete")
     public void testSaveHistoryAlreadyExists() throws SQLException, IOException {
         historian.recordName(TIS_UUID, "Tis_awesomeness");
-        historian.saveMojangHistory(TIS_UUID);
+        assertThat(historian.saveMojangHistory(TIS_UUID)).isTrue();
 
         List<NameRecord> history = historian.getNameHistory(TIS_UUID);
         checkHistory(history, TIS_TIME);
     }
 
     @Test
-    @Disabled("Functionality not complete")
     public void testSaveHistoryPreviouslyExists() throws SQLException, IOException {
         NameRecord nr = new NameRecord(TIS_UUID, "tis_awesomeness", TIS_TIME.minusSeconds(10), Instant.now(), TIS_TIME.minusSeconds(5));
         historian.recordName(nr);
-        historian.saveMojangHistory(TIS_UUID);
+        assertThat(historian.saveMojangHistory(TIS_UUID)).isTrue();
 
         List<NameRecord> history = historian.getNameHistory(TIS_UUID);
         checkHistory(history, TIS_TIME.minusSeconds(10));
@@ -133,7 +134,6 @@ public class NameHistorianTest {
 
     private static void checkHistory(List<NameRecord> history, Instant originalFirstSeen) {
         assertThat(history).hasSize(2);
-        System.out.println(history);
 
         NameRecord latest = history.get(0);
         assertThat(latest)
@@ -152,7 +152,7 @@ public class NameHistorianTest {
 
     @Test
     public void testSaveHistory1() throws IOException, SQLException {
-        historian.saveMojangHistory(JEB_UUID);
+        assertThat(historian.saveMojangHistory(JEB_UUID)).isTrue();
         List<NameRecord> history = historian.getNameHistory(JEB_UUID);
 
         assertThat(history).hasSize(1);
@@ -167,11 +167,10 @@ public class NameHistorianTest {
 
     @Test
     public void testSaveHistory2() throws IOException, SQLException {
-        historian.saveMojangHistory(DUMMY_UUID);
+        assertThat(historian.saveMojangHistory(DUMMY_UUID)).isTrue();
         List<NameRecord> history = historian.getNameHistory(DUMMY_UUID);
 
         assertThat(history).hasSize(3);
-        System.out.println(history);
 
         NameRecord middle = history.get(1);
         assertThat(middle)
@@ -179,6 +178,16 @@ public class NameHistorianTest {
                 .containsExactly("dummy2", DUMMY_UUID, TIS_TIME.plusSeconds(1), TIS_TIME.plusSeconds(2));
         assertThat(middle.getDetectedTime())
                 .isBetween(Instant.now().minus(GRACE_PERIOD), Instant.now());
+    }
+
+    @Test
+    public void testSaveHistoryInvalid() throws SQLException, IOException {
+        assertThat(historian.saveMojangHistory(INVALID_UUID)).isFalse();
+    }
+    @Test
+    public void testSaveHistoryIOE() {
+        assertThatThrownBy(() -> historian.saveMojangHistory(THROWING_UUID))
+                .isInstanceOf(IOException.class);
     }
 
 }

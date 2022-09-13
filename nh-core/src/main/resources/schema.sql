@@ -11,4 +11,5 @@ CREATE TABLE IF NOT EXISTS `name_history` (
     `detected_time` INTEGER,
     `last_seen_time` INTEGER NOT NULL
 );
+CREATE INDEX IF NOT EXISTS `uuid_index` ON `name_history` (`uuid`);
 CREATE INDEX IF NOT EXISTS `first_seen_time_index` ON `name_history` (`first_seen_time`);

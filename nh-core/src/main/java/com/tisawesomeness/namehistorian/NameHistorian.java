@@ -26,7 +26,7 @@ public final class NameHistorian {
             "SELECT `id`, `username`, `first_seen_time`, `detected_time`, `last_seen_time`\n" +
             "FROM `name_history`\n" +
             "WHERE `uuid` = ?\n" +
-            "ORDER BY `first_seen_time` DESC;";
+            "ORDER BY `first_seen_time` DESC, `last_seen_time` DESC;";
     private static final String READ_LATEST_SQL = "" +
             "SELECT `id`, `username`, `first_seen_time`, `detected_time`, `last_seen_time`\n" +
             "FROM `name_history`\n" +
@@ -45,6 +45,9 @@ public final class NameHistorian {
             "    `detected_time`,\n" +
             "    `last_seen_time`\n" +
             ") VALUES (?, ?, ?, ?, ?);";
+    private static final String DELETE_ALL_HISTORY_SQL = "" +
+            "DELETE FROM `name_history`\n" +
+            "WHERE `uuid` = ?;";
 
     private final DataSource source;
     private final MojangLookup lookup;
@@ -136,7 +139,7 @@ public final class NameHistorian {
     }
 
     private void recordName(Connection con, NameRecord recordToAdd) throws SQLException {
-        NameDBRecord latestRecord = findLatestNameRecord(con, recordToAdd.getUuid());
+        NameDBRecord latestRecord = findNameRecord(con, recordToAdd.getUuid());
         if (latestRecord != null && latestRecord.getUsername().equals(recordToAdd.getUsername())) {
             updateLastSeenTime(con, latestRecord.getId());
         } else {
@@ -144,7 +147,7 @@ public final class NameHistorian {
         }
     }
 
-    private @Nullable NameDBRecord findLatestNameRecord(Connection con, UUID uuid) throws SQLException {
+    private @Nullable NameDBRecord findNameRecord(Connection con, UUID uuid) throws SQLException {
         @Cleanup PreparedStatement st = con.prepareStatement(READ_LATEST_SQL);
         st.setString(1, uuid.toString());
         @Cleanup ResultSet rs = st.executeQuery();
@@ -180,6 +183,9 @@ public final class NameHistorian {
      */
     public List<NameRecord> getNameHistory(UUID uuid) throws SQLException {
         @Cleanup Connection con = source.getConnection();
+        return retrieveNameHistory(con, uuid);
+    }
+    private List<NameRecord> retrieveNameHistory(Connection con, UUID uuid) throws SQLException {
         @Cleanup PreparedStatement st = con.prepareStatement(READ_ALL_HISTORY_SQL);
         st.setString(1, uuid.toString());
         @Cleanup ResultSet rs = st.executeQuery();
@@ -190,23 +196,27 @@ public final class NameHistorian {
         return list;
     }
 
-    // TODO error handling, combine with existing db records
+    // TODO error handling
     /**
      * Requests the player's name history from the Mojang API and saves it to the database.
      * BEWARE: this may error when Mojang disables the API endpoint on September 13th!
      * @param uuid The UUID of the player to look up
+     * @return True on success, false if history cannot be looked up
      * @throws IOException see {@link MojangLookup#fetchNameChanges(UUID)}
      * @throws SQLException on database error
      */
-    public void saveMojangHistory(UUID uuid) throws IOException, SQLException {
+    public boolean saveMojangHistory(UUID uuid) throws IOException, SQLException {
         List<NameChange> history = lookup.fetchNameChanges(uuid);
+        if (history.isEmpty()) {
+            return false;
+        }
         List<NameRecord> records = new ArrayList<>();
         Instant now = Instant.now();
 
         for (int i = 0; i < history.size(); i++) {
             NameChange change = history.get(i);
 
-            @Nullable NameChange next = i + 1 < history.size() ? history.get(i + 1) : null;
+            NameChange next = i + 1 < history.size() ? history.get(i + 1) : null;
             Instant firstSeen;
             if (!change.isOriginal()) {
                 firstSeen = change.getChangeTime();
@@ -221,10 +231,24 @@ public final class NameHistorian {
         }
 
         asTransaction(con -> {
-            for (NameRecord nr : records) {
-                this.recordNewName(con, nr);
+            List<NameRecord> dbHistory = retrieveNameHistory(con, uuid);
+            List<NameRecord> toAdd;
+            if (dbHistory.isEmpty()) {
+                toAdd = records;
+            } else {
+                toAdd = NameRecord.combine(dbHistory, records);
+                deleteHistory(con, uuid);
+            }
+            for (NameRecord nr : toAdd) {
+                recordNewName(con, nr);
             }
         });
+        return true;
+    }
+    private void deleteHistory(Connection con, UUID uuid) throws SQLException {
+        @Cleanup PreparedStatement st = con.prepareStatement(DELETE_ALL_HISTORY_SQL);
+        st.setString(1, uuid.toString());
+        st.executeUpdate();
     }
 
     private NameDBRecord readDBRecord(ResultSet rs, UUID uuid) throws SQLException {

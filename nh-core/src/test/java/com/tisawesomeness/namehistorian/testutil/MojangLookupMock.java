@@ -3,6 +3,7 @@ package com.tisawesomeness.namehistorian.testutil;
 import com.tisawesomeness.namehistorian.MojangLookup;
 import com.tisawesomeness.namehistorian.NameChange;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -17,7 +18,7 @@ public class MojangLookupMock implements MojangLookup {
     private static final UUID INVALID_UUID = UUID.fromString("f6489b79-7a9f-49e2-980e-265a05dbc3ae");
 
     @Override
-    public List<NameChange> fetchNameChanges(UUID uuid) {
+    public List<NameChange> fetchNameChanges(UUID uuid) throws IOException {
         if (uuid.equals(TIS_UUID)) {
             return Arrays.asList(
                     new NameChange("tis_awesomeness", 0),
@@ -34,7 +35,7 @@ public class MojangLookupMock implements MojangLookup {
         } else if (uuid.equals(INVALID_UUID)) {
             return Collections.emptyList();
         }
-        throw new AssertionError("Unexpected UUID: " + uuid);
+        throw new IOException("Unexpected UUID: " + uuid);
     }
 
 }
