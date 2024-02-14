@@ -23,7 +23,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
-public class HistoryCommand implements CommandExecutor, TabCompleter {
+public final class HistoryCommand implements CommandExecutor, TabCompleter {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 

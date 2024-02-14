@@ -11,7 +11,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import java.sql.SQLException;
 
 @AllArgsConstructor
-public class SeenListener implements Listener {
+public final class SeenListener implements Listener {
 
     private final NameHistorianSpigot plugin;
 

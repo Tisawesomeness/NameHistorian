@@ -58,11 +58,11 @@ public final class NameHistorianSpigot extends JavaPlugin {
 
     private void recordOnlinePlayers() throws SQLException {
         List<NamedPlayer> players = getServer().getOnlinePlayers().stream()
-                .map(this::toNamedPlayer)
+                .map(NameHistorianSpigot::toNamedPlayer)
                 .collect(Collectors.toList());
         getHistorian().recordNames(players);
     }
-    private NamedPlayer toNamedPlayer(Player player) {
+    private static NamedPlayer toNamedPlayer(Player player) {
         return new NamedPlayer(player.getUniqueId(), player.getName());
     }
 
