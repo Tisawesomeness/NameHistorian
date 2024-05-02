@@ -11,7 +11,7 @@ import java.util.UUID;
 public class Messages {
 
     /** commandLabel */
-    public static final A1<String> USAGE = label -> Component.translatable("namehistorian.usage")
+    public static final A1<String> HISTORY_USAGE = label -> Component.translatable("namehistorian.history_usage")
             .color(NamedTextColor.RED)
             .arguments(Component.text(label));
     public static final Component UNKNOWN_PLAYER = Component.translatable("namehistorian.unknown_player")
@@ -38,6 +38,13 @@ public class Messages {
                     Component.text(format(firstSeen)).color(NamedTextColor.GREEN),
                     Component.text(format(lastSeen)).color(NamedTextColor.GREEN)
             );
+    /** commandLabel */
+    public static final A1<String> NAMEHISTORIAN_USAGE = label -> Component.translatable("namehistorian.namehistorian_usage")
+            .color(NamedTextColor.RED)
+            .arguments(Component.text(label));
+    public static final Component RELOAD_FAILED = Component.translatable("namehistorian.reload_failed")
+            .color(NamedTextColor.RED);
+    public static final Component RELOAD_SUCCESS = Component.translatable("namehistorian.reload_success");
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 

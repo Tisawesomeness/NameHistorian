@@ -26,7 +26,7 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            plugin.sendMessage(sender, Messages.USAGE, label);
+            plugin.sendMessage(sender, Messages.HISTORY_USAGE, label);
             return true;
         }
         Optional<OfflinePlayer> playerOpt = plugin.getPlayer(args[0]);

@@ -32,7 +32,9 @@ public final class NameHistorianSpigot extends JavaPlugin {
             Component.text(" ")
     );
 
+    // Null until plugin enabled
     private @Nullable BukkitAudiences adventure;
+    private @Nullable TranslationManager translationManager;
     private @Nullable NameHistorian historian;
 
     @Override
@@ -45,10 +47,11 @@ public final class NameHistorianSpigot extends JavaPlugin {
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
-        TranslationManager.load(this);
+        translationManager = new TranslationManager(this);
+        translationManager.load();
 
+        Path dbPath = dataPath.resolve("history.db");
         try {
-            Path dbPath = dataPath.resolve("history.db");
             historian = new NameHistorian(dbPath);
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
@@ -56,12 +59,19 @@ public final class NameHistorianSpigot extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new SeenListener(this), this);
         Objects.requireNonNull(getCommand("history")).setExecutor(new HistoryCommand(this));
+        Objects.requireNonNull(getCommand("namehistorian")).setExecutor(new NameHistorianCommand(this));
 
         try {
             recordOnlinePlayers();
         } catch (SQLException ex) {
             ex.printStackTrace();
             // Non-fatal, keep plugin running
+        }
+    }
+
+    public void reload() {
+        if (translationManager != null) {
+            translationManager.load();
         }
     }
 

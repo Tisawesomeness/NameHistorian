@@ -8,18 +8,30 @@ website: tis.codes
 commands:
   history:
     description: "Look up a player's name history"
-    aliases: [ hist, namehist, namehistory ]
+    aliases: [ hist, nh, namehist, namehistory ]
     permission: namehistorian.history
+    permission-message: "§cYou do not have permission to use this command."
+  namehistorian:
+    description: "Manage NameHistorian"
+    permission: namehistorian.reload
     permission-message: "§cYou do not have permission to use this command."
 permissions:
   namehistory.*:
     default: op
     children:
       namehistory.history: true
+      namehistory.reload: true
   namehistory.history:
     default: op
     children:
       namehistorian.history: true
   namehistorian.history:
     description: "Allows using the /history command"
+    default: op
+  namehistory.reload:
+    default: op
+    children:
+      namehistorian.reload: true
+  namehistorian.reload:
+    description: "Allows using the /namehistorian command"
     default: op

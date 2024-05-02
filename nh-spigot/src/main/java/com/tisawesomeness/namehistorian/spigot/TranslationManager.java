@@ -2,12 +2,14 @@ package com.tisawesomeness.namehistorian.spigot;
 
 import com.tisawesomeness.namehistorian.Tuple;
 import lombok.Cleanup;
+import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.translation.GlobalTranslator;
 import net.kyori.adventure.translation.TranslationRegistry;
 import net.kyori.adventure.translation.Translator;
 import net.kyori.adventure.util.UTF8ResourceBundleControl;
 
+import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -19,31 +21,39 @@ import java.util.PropertyResourceBundle;
 import java.util.ResourceBundle;
 import java.util.stream.Stream;
 
+@RequiredArgsConstructor
 public class TranslationManager {
 
     private static final Locale DEFAULT = Locale.ENGLISH;
 
-    public static void load(NameHistorianSpigot plugin) {
-        TranslationRegistry registry = TranslationRegistry.create(Key.key("namehistorian", "main"));
-        registry.defaultLocale(DEFAULT);
+    private final NameHistorianSpigot plugin;
+    private @Nullable TranslationRegistry currentRegistry;
+
+    public void load() {
+        TranslationRegistry newRegistry = TranslationRegistry.create(Key.key("namehistorian", "main"));
+        newRegistry.defaultLocale(DEFAULT);
 
         Path translationsDirectory = plugin.getDataFolder().toPath().resolve("translations");
         try {
             Files.createDirectories(translationsDirectory);
-            registerFromDirectory(plugin, registry, translationsDirectory);
+            registerFromDirectory(newRegistry, translationsDirectory);
         } catch (IOException ex) {
             ex.printStackTrace();
             // Non-fatal
         }
 
-        registerFromJar(registry);
+        registerFromJar(newRegistry);
 
-        GlobalTranslator.translator().addSource(registry);
+        if (currentRegistry != null) {
+            GlobalTranslator.translator().removeSource(currentRegistry);
+        }
+        currentRegistry = newRegistry;
+        GlobalTranslator.translator().addSource(newRegistry);
     }
 
-    private static void registerFromDirectory(NameHistorianSpigot plugin, TranslationRegistry registry, Path translationsDirectory) throws IOException {
+    private void registerFromDirectory(TranslationRegistry registry, Path translationsDirectory) throws IOException {
         @Cleanup Stream<Path> stream = Files.list(translationsDirectory);
-        stream.map(p -> tryReadBundle(plugin, p))
+        stream.map(this::tryReadBundle)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .forEach(t -> t.run((locale, bundle) -> {
@@ -59,16 +69,16 @@ public class TranslationManager {
         return Optional.of(languageOnlyLocale);
     }
 
-    private static Optional<Tuple<Locale, ResourceBundle>> tryReadBundle(NameHistorianSpigot plugin, Path translationFile) {
+    private Optional<Tuple<Locale, ResourceBundle>> tryReadBundle(Path translationFile) {
         try {
-            return readBundle(plugin, translationFile);
+            return readBundle(translationFile);
         } catch (IOException ex) {
             plugin.getLogger().warning("Failed to register " + translationFile);
             ex.printStackTrace();
             return Optional.empty();
         }
     }
-    private static Optional<Tuple<Locale, ResourceBundle>> readBundle(NameHistorianSpigot plugin, Path translationFile) throws IOException {
+    private Optional<Tuple<Locale, ResourceBundle>> readBundle(Path translationFile) throws IOException {
         String fileName = translationFile.getFileName().toString();
         if (!fileName.endsWith(".properties")) {
             return Optional.empty();
