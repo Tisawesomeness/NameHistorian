@@ -17,5 +17,9 @@ permissions:
     children:
       namehistory.history: true
   namehistory.history:
+    default: op
+    children:
+      namehistorian.history: true
+  namehistorian.history:
     description: "Allows using the /history command"
     default: op
