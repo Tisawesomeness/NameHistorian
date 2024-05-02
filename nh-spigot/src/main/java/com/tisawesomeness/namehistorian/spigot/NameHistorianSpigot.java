@@ -38,14 +38,19 @@ public final class NameHistorianSpigot extends JavaPlugin {
     @Override
     public void onEnable() {
         adventure = BukkitAudiences.create(this);
-        Translator.load();
 
         Path dataPath = getDataFolder().toPath();
         try {
             Files.createDirectories(dataPath); // Plugin folder might not exist, create it
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+        TranslationManager.load(this);
+
+        try {
             Path dbPath = dataPath.resolve("history.db");
             historian = new NameHistorian(dbPath);
-        } catch (IOException | SQLException ex) {
+        } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }
 
