@@ -3,6 +3,10 @@ package com.tisawesomeness.namehistorian.spigot;
 import com.tisawesomeness.namehistorian.NameHistorian;
 import com.tisawesomeness.namehistorian.NamedPlayer;
 
+import net.kyori.adventure.platform.bukkit.BukkitAudiences;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.JoinConfiguration;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -21,10 +25,21 @@ import java.util.stream.Collectors;
 
 public final class NameHistorianSpigot extends JavaPlugin {
 
+    private static final Component PREFIX = Component.join(JoinConfiguration.noSeparators(),
+            Component.text("[").color(NamedTextColor.GRAY),
+            Component.text("NH").color(NamedTextColor.BLUE),
+            Component.text("]").color(NamedTextColor.GRAY),
+            Component.text(" ")
+    );
+
+    private @Nullable BukkitAudiences adventure;
     private @Nullable NameHistorian historian;
 
     @Override
     public void onEnable() {
+        adventure = BukkitAudiences.create(this);
+        Translator.load();
+
         Path dataPath = getDataFolder().toPath();
         try {
             Files.createDirectories(dataPath); // Plugin folder might not exist, create it
@@ -47,6 +62,10 @@ public final class NameHistorianSpigot extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (adventure != null) {
+            adventure.close();
+            adventure = null;
+        }
         if (historian != null) {
             try {
                 recordOnlinePlayers();
@@ -72,6 +91,12 @@ public final class NameHistorianSpigot extends JavaPlugin {
         }
         return historian;
     }
+    public BukkitAudiences getAdventure() {
+        if (adventure == null) {
+            throw new IllegalStateException("Tried to access Adventure when the plugin was disabled!");
+        }
+        return adventure;
+    }
 
     public Optional<OfflinePlayer> getPlayer(String playerNameOrUUID) {
         // Longer usernames are not allowed in (at least) 1.19
@@ -90,8 +115,14 @@ public final class NameHistorianSpigot extends JavaPlugin {
         }
     }
 
-    public void sendMessage(CommandSender sender, String msg, Object... args) {
-        sender.sendMessage("§7[§9NH§7]§r " + String.format(msg, args));
+    public void sendMessage(CommandSender sender, Component msg) {
+        getAdventure().sender(sender).sendMessage(PREFIX.append(msg));
+    }
+    public <A0> void sendMessage(CommandSender sender, Messages.A1<A0> msg, A0 a0) {
+        sendMessage(sender, msg.build(a0));
+    }
+    public <A0, A1> void sendMessage(CommandSender sender, Messages.A2<A0, A1> msg, A0 a0, A1 a1) {
+        sendMessage(sender, msg.build(a0, a1));
     }
 
 }
