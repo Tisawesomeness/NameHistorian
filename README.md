@@ -4,7 +4,7 @@ Records and displays player name changes.
 
 ![Screenshot of /history command](docs/demo.png)
 
-**Minecraft Version:** 1.8 - 1.20
+**Minecraft Version:** 1.8 - 1.20.6
 
 ## Commands
 
