@@ -4,6 +4,7 @@ description: "Records and looks up player name history"
 main: com.tisawesomeness.namehistorian.spigot.NameHistorianSpigot
 api-version: 1.13
 authors: [ Tis_awesomeness ]
+website: tis.codes
 commands:
   history:
     description: "Look up a player's name history"
