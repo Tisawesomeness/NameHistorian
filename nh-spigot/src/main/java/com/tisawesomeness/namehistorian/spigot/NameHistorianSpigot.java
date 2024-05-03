@@ -34,12 +34,16 @@ public final class NameHistorianSpigot extends JavaPlugin {
 
     // Null until plugin enabled
     private @Nullable BukkitAudiences adventure;
+    private @Nullable NameHistorianConfig config;
     private @Nullable TranslationManager translationManager;
     private @Nullable NameHistorian historian;
 
     @Override
     public void onEnable() {
         adventure = BukkitAudiences.create(this);
+
+        saveDefaultConfig();
+        config = new NameHistorianConfig(this);
 
         Path dataPath = getDataFolder().toPath();
         try {
@@ -48,7 +52,8 @@ public final class NameHistorianSpigot extends JavaPlugin {
             throw new RuntimeException(ex);
         }
         translationManager = new TranslationManager(this);
-        translationManager.load();
+        assert config != null;
+        translationManager.load(config);
 
         Path dbPath = dataPath.resolve("history.db");
         try {
@@ -70,8 +75,10 @@ public final class NameHistorianSpigot extends JavaPlugin {
     }
 
     public void reload() {
+        reloadConfig();
+        config = new NameHistorianConfig(this);
         if (translationManager != null) {
-            translationManager.load();
+            translationManager.load(config);
         }
     }
 
@@ -100,17 +107,17 @@ public final class NameHistorianSpigot extends JavaPlugin {
         return new NamedPlayer(player.getUniqueId(), player.getName());
     }
 
+    public BukkitAudiences getAdventure() {
+        if (adventure == null) {
+            throw new IllegalStateException("Adventure is not initialized");
+        }
+        return adventure;
+    }
     public NameHistorian getHistorian() {
         if (historian == null) {
             throw new IllegalStateException("Historian is not initialized");
         }
         return historian;
-    }
-    public BukkitAudiences getAdventure() {
-        if (adventure == null) {
-            throw new IllegalStateException("Tried to access Adventure when the plugin was disabled!");
-        }
-        return adventure;
     }
 
     public Optional<OfflinePlayer> getPlayer(String playerNameOrUUID) {

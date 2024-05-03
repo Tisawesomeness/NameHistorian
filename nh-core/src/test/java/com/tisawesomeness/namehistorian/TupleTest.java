@@ -2,8 +2,6 @@ package com.tisawesomeness.namehistorian;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TupleTest {
@@ -16,13 +14,8 @@ public class TupleTest {
     }
 
     @Test
-    public void testRun() {
-        AtomicInteger i = new AtomicInteger(0);
-        Tuple.of(2, 1).run((a, b) -> {
-            i.addAndGet(a);
-            i.addAndGet(b);
-        });
-        assertThat(i).hasValue(3);
+    public void testFold() {
+        assertThat(Tuple.of(2, 1).fold(Integer::sum)).isEqualTo(3);
     }
 
     @Test

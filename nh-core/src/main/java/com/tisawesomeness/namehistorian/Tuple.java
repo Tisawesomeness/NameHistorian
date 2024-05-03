@@ -4,7 +4,7 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 
-import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @EqualsAndHashCode
@@ -23,8 +23,8 @@ public final class Tuple<A, B> {
         return b;
     }
 
-    public void run(BiConsumer<A, B> consumer) {
-        consumer.accept(a, b);
+    public <R> R fold(BiFunction<A, B, R> function) {
+        return function.apply(a, b);
     }
 
     @Override

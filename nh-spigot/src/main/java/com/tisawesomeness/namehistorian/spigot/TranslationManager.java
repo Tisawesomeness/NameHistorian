@@ -2,6 +2,7 @@ package com.tisawesomeness.namehistorian.spigot;
 
 import com.tisawesomeness.namehistorian.Tuple;
 import lombok.Cleanup;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.translation.GlobalTranslator;
@@ -15,65 +16,81 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.PropertyResourceBundle;
-import java.util.ResourceBundle;
+import java.util.*;
 import java.util.stream.Stream;
 
 @RequiredArgsConstructor
 public class TranslationManager {
 
-    private static final Locale DEFAULT = Locale.ENGLISH;
+    public static final Locale PLUGIN_DEFAULT = Locale.ENGLISH;
 
     private final NameHistorianSpigot plugin;
-    private @Nullable TranslationRegistry currentRegistry;
+    // Null until first load()
+    private @Nullable RegistryAdapter currentRegistry;
 
-    public void load() {
-        TranslationRegistry newRegistry = TranslationRegistry.create(Key.key("namehistorian", "main"));
-        newRegistry.defaultLocale(DEFAULT);
+    public void load(NameHistorianConfig config) {
+        RegistryAdapter newRegistry = new RegistryAdapter();
+        newRegistry.setDefaultLocale(config.getDefaultLocale());
 
-        Path translationsDirectory = plugin.getDataFolder().toPath().resolve("translations");
-        try {
-            Files.createDirectories(translationsDirectory);
-            registerFromDirectory(newRegistry, translationsDirectory);
-        } catch (IOException ex) {
-            ex.printStackTrace();
-            // Non-fatal
+        boolean anyLanguageRegistered = tryRegisterFromDirectory(config, newRegistry);
+        if (config.isPerUserTranslations() || !anyLanguageRegistered) {
+            registerFromJar(newRegistry);
         }
-
-        registerFromJar(newRegistry);
 
         if (currentRegistry != null) {
-            GlobalTranslator.translator().removeSource(currentRegistry);
+            GlobalTranslator.translator().removeSource(currentRegistry.getRegistry());
         }
         currentRegistry = newRegistry;
-        GlobalTranslator.translator().addSource(newRegistry);
+        GlobalTranslator.translator().addSource(newRegistry.getRegistry());
     }
 
-    private void registerFromDirectory(TranslationRegistry registry, Path translationsDirectory) throws IOException {
+    private boolean tryRegisterFromDirectory(NameHistorianConfig config, RegistryAdapter registry) {
+        try {
+            return registerFromDirectory(config, registry);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            return false;
+        }
+    }
+    private boolean registerFromDirectory(NameHistorianConfig config, RegistryAdapter registry) throws IOException {
+        Path translationsDirectory = plugin.getDataFolder().toPath().resolve("translations");
+        Files.createDirectories(translationsDirectory);
+
+        String defaultTranslationFileName = config.getDefaultLocale() + ".properties";
+        Path defaultTranslationFile = translationsDirectory.resolve(defaultTranslationFileName);
+        if (!Files.exists(defaultTranslationFile)) {
+            if (config.isPerUserTranslations()) {
+                plugin.getLogger().warning(defaultTranslationFileName + " does not exist");
+            } else {
+                plugin.getLogger().warning(defaultTranslationFileName + " does not exist, defaulting to " + PLUGIN_DEFAULT);
+                return false;
+            }
+        }
+
+        if (config.isPerUserTranslations()) {
+            return registerAllFromDirectory(registry, translationsDirectory);
+        } else {
+            return tryReadBundle(defaultTranslationFile)
+                    .map(t -> t.fold(registry::register))
+                    .orElse(false);
+        }
+    }
+
+    private boolean registerAllFromDirectory(RegistryAdapter registry, Path translationsDirectory) throws IOException {
         @Cleanup Stream<Path> stream = Files.list(translationsDirectory);
-        stream.map(this::tryReadBundle)
+        return stream.map(this::tryReadBundle)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .forEach(t -> t.run((locale, bundle) -> {
-                    tryRegisterBundle(registry, locale, bundle);
-                    languageOnlyLocale(locale).ifPresent(l -> tryRegisterBundle(registry, l, bundle));
-                }));
-    }
-    private static Optional<Locale> languageOnlyLocale(Locale locale) {
-        Locale languageOnlyLocale = new Locale(locale.getLanguage());
-        if (languageOnlyLocale.equals(locale) || languageOnlyLocale.equals(DEFAULT)) {
-            return Optional.empty();
-        }
-        return Optional.of(languageOnlyLocale);
+                .map(t -> t.fold(registry::register))
+                .reduce((a, b) -> a || b) // Reducing with OR instead of using anyMatch() so stream doesn't short-circuit
+                .orElse(false);
     }
 
     private Optional<Tuple<Locale, ResourceBundle>> tryReadBundle(Path translationFile) {
         try {
             return readBundle(translationFile);
         } catch (IOException ex) {
-            plugin.getLogger().warning("Failed to register " + translationFile);
+            plugin.getLogger().warning("Failed to register " + translationFile.getFileName());
             ex.printStackTrace();
             return Optional.empty();
         }
@@ -87,7 +104,7 @@ public class TranslationManager {
         String localeStr = fileName.substring(0, fileName.length() - ".properties".length());
         Locale locale = Translator.parseLocale(localeStr);
         if (locale == null) {
-            plugin.getLogger().warning("Unknown locale " + localeStr);
+            plugin.getLogger().warning("Translation file " + translationFile.getFileName() + " is not a valid locale");
             return Optional.empty();
         }
 
@@ -95,15 +112,56 @@ public class TranslationManager {
         return Optional.of(Tuple.of(locale, new PropertyResourceBundle(reader)));
     }
 
-    private static void registerFromJar(TranslationRegistry registry) {
-        ResourceBundle bundle = ResourceBundle.getBundle("lang/namehistorian", DEFAULT, UTF8ResourceBundleControl.get());
-        tryRegisterBundle(registry, DEFAULT, bundle);
+    private static void registerFromJar(RegistryAdapter registry) {
+        ResourceBundle bundle = ResourceBundle.getBundle("lang/namehistorian", PLUGIN_DEFAULT, UTF8ResourceBundleControl.get());
+        registry.register(PLUGIN_DEFAULT, bundle);
     }
 
-    private static void tryRegisterBundle(TranslationRegistry registry, Locale locale, ResourceBundle bundle) {
-        try {
-            registry.registerAll(locale, bundle, false);
-        } catch (IllegalArgumentException ignore) { }
+    private static class RegistryAdapter {
+
+        @Getter private final TranslationRegistry registry;
+        private final Set<Locale> registeredLocales = new HashSet<>();
+
+        public RegistryAdapter() {
+            registry = TranslationRegistry.create(Key.key("namehistorian", "main"));
+        }
+
+        public void setDefaultLocale(Locale locale) {
+            System.out.println("Default: " + locale);
+            registry.defaultLocale(locale);
+        }
+
+        public boolean register(Locale locale, ResourceBundle bundle) {
+            boolean registered = tryRegister(locale, bundle);
+            boolean languageOnlyRegistered = languageOnlyLocale(locale)
+                            .map(l -> tryRegister(l, bundle))
+                            .orElse(false);
+            return registered || languageOnlyRegistered;
+        }
+        private boolean tryRegister(Locale locale, ResourceBundle bundle) {
+            if (registeredLocales.contains(locale)) {
+                System.out.println("Duplicate " + locale);
+                return false;
+            }
+            try {
+                registry.registerAll(locale, bundle, false);
+            } catch (IllegalArgumentException ignore) {
+                System.out.println("Error " + locale);
+                return false;
+            }
+            registeredLocales.add(locale);
+            System.out.println("Registered " + locale);
+            return true;
+        }
+
+        private static Optional<Locale> languageOnlyLocale(Locale locale) {
+            Locale languageOnlyLocale = new Locale(locale.getLanguage());
+            if (languageOnlyLocale.equals(locale) || languageOnlyLocale.equals(PLUGIN_DEFAULT)) {
+                return Optional.empty();
+            }
+            return Optional.of(languageOnlyLocale);
+        }
+
     }
 
 }
