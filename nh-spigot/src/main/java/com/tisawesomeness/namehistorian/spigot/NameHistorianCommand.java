@@ -25,11 +25,10 @@ public final class NameHistorianCommand implements CommandExecutor, TabCompleter
         try {
             plugin.reload();
         } catch (Exception ex) {
-            plugin.err("Reload by %s failed", ex, sender.getName());
+            plugin.err("Reload failed", ex);
             plugin.sendMessage(sender, Messages.RELOAD_FAILED);
             return true;
         }
-        plugin.log("Reloaded by %s", sender.getName());
         plugin.sendMessage(sender, Messages.RELOAD_SUCCESS);
         return true;
     }

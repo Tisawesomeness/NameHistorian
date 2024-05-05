@@ -151,16 +151,12 @@ public final class NameHistorianSpigot extends JavaPlugin {
     }
 
     @FormatMethod
-    public void log(String msg, Object... args) {
-        getLogger().info(String.format(msg, args));
-    }
-    @FormatMethod
     public void warn(String msg, Object... args) {
         getLogger().warning(String.format(msg, args));
     }
     @FormatMethod
     public void err(String msg, Object... args) {
-        getLogger().warning(String.format(msg, args));
+        getLogger().severe(String.format(msg, args));
     }
     public void err(String msg, Throwable ex, Object... args) {
         getLogger().severe(String.format(msg, args));
