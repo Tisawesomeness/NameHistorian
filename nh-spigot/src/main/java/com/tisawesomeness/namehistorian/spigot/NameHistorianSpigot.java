@@ -56,7 +56,7 @@ public final class NameHistorianSpigot extends JavaPlugin {
         }
         translationManager = new TranslationManager(this);
         assert config != null;
-        translationManager.load(config);
+        translationManager.init(config);
 
         Path dbPath = dataPath.resolve("history.db");
         try {
@@ -81,7 +81,7 @@ public final class NameHistorianSpigot extends JavaPlugin {
         reloadConfig();
         config = new NameHistorianConfig(this);
         if (translationManager != null) {
-            translationManager.load(config);
+            translationManager.init(config);
         }
     }
 

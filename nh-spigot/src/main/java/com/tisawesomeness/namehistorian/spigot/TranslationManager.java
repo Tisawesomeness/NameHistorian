@@ -13,6 +13,7 @@ import net.kyori.adventure.util.UTF8ResourceBundleControl;
 import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,14 +26,49 @@ public class TranslationManager {
     public static final Locale PLUGIN_DEFAULT = Locale.ENGLISH;
 
     private final NameHistorianSpigot plugin;
-    // Null until first load()
+    // Null until first loadTranslations()
     private @Nullable RegistryAdapter currentRegistry;
 
-    public void load(NameHistorianConfig config) {
+    public void init(NameHistorianConfig config) {
+        Path translationsDirectory = tryCreateTranslationsDirectory();
+        if (translationsDirectory != null) {
+            try {
+                writeTranslationsFromJarIfMissing(translationsDirectory);
+            } catch (IOException ex) {
+                plugin.err("Could not write default translations file", ex);
+                // Non-fatal
+            }
+        }
+        loadTranslations(config, translationsDirectory);
+    }
+
+    private @Nullable Path tryCreateTranslationsDirectory() {
+        Path translationsDirectory = plugin.getDataFolder().toPath().resolve("translations");
+        try {
+            Files.createDirectories(translationsDirectory);
+            return translationsDirectory;
+        } catch (IOException ex) {
+            plugin.err("Could not create translations directory", ex);
+            return null;
+        }
+    }
+
+    private void writeTranslationsFromJarIfMissing(Path translationsDirectory) throws IOException {
+        Path translationsFile = translationsDirectory.resolve("en.properties");
+        if (!Files.exists(translationsFile)) {
+            @Cleanup InputStream is = plugin.getResource("lang/namehistorian_en.properties");
+            if (is == null) {
+                throw new AssertionError("Some classloader trickery is going on");
+            }
+            Files.copy(is, translationsFile);
+        }
+    }
+
+    private void loadTranslations(NameHistorianConfig config, @Nullable Path translationsDirectory) {
         RegistryAdapter newRegistry = new RegistryAdapter();
         newRegistry.setDefaultLocale(config.getDefaultLocale());
 
-        boolean anyLanguageRegistered = tryRegisterFromDirectory(config, newRegistry);
+        boolean anyLanguageRegistered = tryRegisterFromDirectory(config, translationsDirectory, newRegistry);
         if (config.isPerUserTranslations() || !anyLanguageRegistered) {
             registerFromJar(newRegistry);
         }
@@ -44,18 +80,19 @@ public class TranslationManager {
         GlobalTranslator.translator().addSource(newRegistry.getRegistry());
     }
 
-    private boolean tryRegisterFromDirectory(NameHistorianConfig config, RegistryAdapter registry) {
+    private boolean tryRegisterFromDirectory(NameHistorianConfig config, @Nullable Path translationsDirectory,
+                RegistryAdapter registry) {
+        if (translationsDirectory == null) {
+            return false;
+        }
         try {
-            return registerFromDirectory(config, registry);
+            return registerFromDirectory(config, translationsDirectory, registry);
         } catch (IOException ex) {
             plugin.err("Failed to read translations from plugin directory", ex);
             return false;
         }
     }
-    private boolean registerFromDirectory(NameHistorianConfig config, RegistryAdapter registry) throws IOException {
-        Path translationsDirectory = plugin.getDataFolder().toPath().resolve("translations");
-        Files.createDirectories(translationsDirectory);
-
+    private boolean registerFromDirectory(NameHistorianConfig config, Path translationsDirectory, RegistryAdapter registry) throws IOException {
         if (config.isPerUserTranslations()) {
             return registerAllFromDirectory(registry, translationsDirectory);
         }
