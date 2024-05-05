@@ -56,25 +56,34 @@ public class TranslationManager {
         Path translationsDirectory = plugin.getDataFolder().toPath().resolve("translations");
         Files.createDirectories(translationsDirectory);
 
-        String defaultTranslationFileName = config.getDefaultLocale() + ".properties";
-        Path defaultTranslationFile = translationsDirectory.resolve(defaultTranslationFileName);
-        if (!Files.exists(defaultTranslationFile)) {
-            if (config.isPerUserTranslations()) {
-                plugin.warn("Default translation file %s does not exist", defaultTranslationFileName);
-            } else {
-                plugin.warn("Default translation file %s does not exist, using %s locale instead",
-                        defaultTranslationFileName, PLUGIN_DEFAULT);
-                return false;
-            }
-        }
-
         if (config.isPerUserTranslations()) {
             return registerAllFromDirectory(registry, translationsDirectory);
-        } else {
-            return tryReadBundle(defaultTranslationFile)
-                    .map(t -> t.fold(registry::register))
-                    .orElse(false);
         }
+
+        String defaultTranslationFileName = config.getDefaultLocale() + ".properties";
+        Path defaultTranslationFile = translationsDirectory.resolve(defaultTranslationFileName);
+        if (registerFile(registry, defaultTranslationFile)) {
+            return true;
+        }
+        plugin.warn("Default translation file could not be loaded, using %s locale instead", PLUGIN_DEFAULT);
+
+        String pluginDefaultTranslationFileName = PLUGIN_DEFAULT.getLanguage() + ".properties";
+        Path pluginDefaultTranslationFile = translationsDirectory.resolve(pluginDefaultTranslationFileName);
+        if (registerFile(registry, pluginDefaultTranslationFile)) {
+            return true;
+        }
+        plugin.warn("%s.properties translation file could not be loaded, loading from jar instead", PLUGIN_DEFAULT);
+        return false;
+    }
+
+    private boolean registerFile(RegistryAdapter registry, Path translationFile) {
+        if (!Files.exists(translationFile)) {
+            plugin.warn("Translation file %s does not exist", translationFile.getFileName());
+            return false;
+        }
+        return tryReadBundle(translationFile)
+                .map(t -> t.fold(registry::register))
+                .orElse(false);
     }
 
     private boolean registerAllFromDirectory(RegistryAdapter registry, Path translationsDirectory) throws IOException {
@@ -133,8 +142,8 @@ public class TranslationManager {
         public boolean register(Locale locale, ResourceBundle bundle) {
             boolean registered = tryRegister(locale, bundle);
             boolean languageOnlyRegistered = languageOnlyLocale(locale)
-                            .map(l -> tryRegister(l, bundle))
-                            .orElse(false);
+                    .map(l -> tryRegister(l, bundle))
+                    .orElse(false);
             return registered || languageOnlyRegistered;
         }
         private boolean tryRegister(Locale locale, ResourceBundle bundle) {
