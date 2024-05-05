@@ -29,7 +29,7 @@ public final class SeenListener implements Listener {
         try {
             plugin.getHistorian().recordName(p.getUniqueId(), p.getName());
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            plugin.err("Could not record name %s for %s", ex, p.getName(), p.getUniqueId());
         }
     }
 

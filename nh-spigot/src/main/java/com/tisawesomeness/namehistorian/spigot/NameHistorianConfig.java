@@ -26,7 +26,7 @@ public class NameHistorianConfig {
         }
         Locale locale = Translator.parseLocale(localeStr);
         if (locale == null) {
-            plugin.getLogger().warning("Unknown locale " + localeStr);
+            plugin.err("Unknown default-locale %s, using %s instead", localeStr, TranslationManager.PLUGIN_DEFAULT);
             return Optional.empty();
         }
         return Optional.of(locale);

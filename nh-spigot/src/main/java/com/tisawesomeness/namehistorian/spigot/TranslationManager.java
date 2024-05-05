@@ -48,7 +48,7 @@ public class TranslationManager {
         try {
             return registerFromDirectory(config, registry);
         } catch (IOException ex) {
-            ex.printStackTrace();
+            plugin.err("Failed to read translations from plugin directory", ex);
             return false;
         }
     }
@@ -60,9 +60,10 @@ public class TranslationManager {
         Path defaultTranslationFile = translationsDirectory.resolve(defaultTranslationFileName);
         if (!Files.exists(defaultTranslationFile)) {
             if (config.isPerUserTranslations()) {
-                plugin.getLogger().warning(defaultTranslationFileName + " does not exist");
+                plugin.warn("Default translation file %s does not exist", defaultTranslationFileName);
             } else {
-                plugin.getLogger().warning(defaultTranslationFileName + " does not exist, defaulting to " + PLUGIN_DEFAULT);
+                plugin.warn("Default translation file %s does not exist, using %s locale instead",
+                        defaultTranslationFileName, PLUGIN_DEFAULT);
                 return false;
             }
         }
@@ -90,8 +91,7 @@ public class TranslationManager {
         try {
             return readBundle(translationFile);
         } catch (IOException ex) {
-            plugin.getLogger().warning("Failed to register " + translationFile.getFileName());
-            ex.printStackTrace();
+            plugin.err("Failed to register translation file %s", ex, translationFile);
             return Optional.empty();
         }
     }
@@ -104,7 +104,7 @@ public class TranslationManager {
         String localeStr = fileName.substring(0, fileName.length() - ".properties".length());
         Locale locale = Translator.parseLocale(localeStr);
         if (locale == null) {
-            plugin.getLogger().warning("Translation file " + translationFile.getFileName() + " is not a valid locale");
+            plugin.err("Translation file %s is not a valid locale", translationFile.getFileName());
             return Optional.empty();
         }
 
@@ -127,7 +127,6 @@ public class TranslationManager {
         }
 
         public void setDefaultLocale(Locale locale) {
-            System.out.println("Default: " + locale);
             registry.defaultLocale(locale);
         }
 
@@ -140,17 +139,14 @@ public class TranslationManager {
         }
         private boolean tryRegister(Locale locale, ResourceBundle bundle) {
             if (registeredLocales.contains(locale)) {
-                System.out.println("Duplicate " + locale);
                 return false;
             }
             try {
                 registry.registerAll(locale, bundle, false);
             } catch (IllegalArgumentException ignore) {
-                System.out.println("Error " + locale);
                 return false;
             }
             registeredLocales.add(locale);
-            System.out.println("Registered " + locale);
             return true;
         }
 

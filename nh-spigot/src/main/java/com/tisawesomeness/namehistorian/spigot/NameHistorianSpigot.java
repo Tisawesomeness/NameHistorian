@@ -11,9 +11,12 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.checkerframework.checker.formatter.qual.FormatMethod;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
@@ -69,7 +72,7 @@ public final class NameHistorianSpigot extends JavaPlugin {
         try {
             recordOnlinePlayers();
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            err("Could not record online players", ex);
             // Non-fatal, keep plugin running
         }
     }
@@ -109,13 +112,13 @@ public final class NameHistorianSpigot extends JavaPlugin {
 
     public BukkitAudiences getAdventure() {
         if (adventure == null) {
-            throw new IllegalStateException("Adventure is not initialized");
+            throw new IllegalStateException("Tried to get adventure instance before plugin enabled");
         }
         return adventure;
     }
     public NameHistorian getHistorian() {
         if (historian == null) {
-            throw new IllegalStateException("Historian is not initialized");
+            throw new IllegalStateException("Tried to get historian instance before plugin enabled");
         }
         return historian;
     }
@@ -145,6 +148,30 @@ public final class NameHistorianSpigot extends JavaPlugin {
     }
     public <A0, A1> void sendMessage(CommandSender sender, Messages.A2<A0, A1> msg, A0 a0, A1 a1) {
         sendMessage(sender, msg.build(a0, a1));
+    }
+
+    @FormatMethod
+    public void log(String msg, Object... args) {
+        getLogger().info(String.format(msg, args));
+    }
+    @FormatMethod
+    public void warn(String msg, Object... args) {
+        getLogger().warning(String.format(msg, args));
+    }
+    @FormatMethod
+    public void err(String msg, Object... args) {
+        getLogger().warning(String.format(msg, args));
+    }
+    public void err(String msg, Throwable ex, Object... args) {
+        getLogger().severe(String.format(msg, args));
+        err(ex);
+    }
+    public void err(Throwable ex) {
+        StringWriter sw = new StringWriter();
+        ex.printStackTrace(new PrintWriter(sw));
+        for (String line : sw.toString().split("\n")) {
+            getLogger().severe(line);
+        }
     }
 
 }

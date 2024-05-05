@@ -39,7 +39,7 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
             List<NameRecord> history = plugin.getHistorian().getNameHistory(player.getUniqueId());
             printNameHistory(sender, history, player.isOnline());
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            plugin.err("Error fetching name history for %s", ex, player.getUniqueId());
             plugin.sendMessage(sender, Messages.FETCH_ERROR);
         }
         return true;
