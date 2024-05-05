@@ -4,7 +4,7 @@ plugins {
 
 allprojects {
     group = 'com.tisawesomeness'
-    version = '0.1.1'
+    version = '0.2.0'
 }
 
 subprojects {
@@ -44,7 +44,9 @@ task copyToOutput(type: Copy) {
 }
 
 task cleanOutput() {
-    delete 'build/libs'
+    delete fileTree("build/libs/").matching {
+        include "*.jar"
+    }
 }
 
 task clean() {
