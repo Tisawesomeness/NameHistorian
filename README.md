@@ -16,9 +16,20 @@ Displays the name history of a player.
 
 ### `/namehistorian reload`
 
-Reloads translations.
+Reloads the config and translations.
 
 **Permission:** `namehistorian.reload` (default: op)
+
+## Translations
+
+To change the plugin's messages, go to the `plugins/NameHistorian/translations` folder and edit the `en.properties` file.
+
+To add a new language, create a new `<locale_id>.properties` file.
+
+- For example, use `es.properties` for Spanish, or `pt_BR.properties` for Portuguese (Brazil).
+- A list of locale IDs can be found [here](https://www.localeplanet.com/java/).
+
+Edit `config.yml` to change the default language or to toggle per-player translations.
 
 ## Building
 

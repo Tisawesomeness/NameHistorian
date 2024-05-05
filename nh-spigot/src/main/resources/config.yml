@@ -1,4 +1,4 @@
-# Whether messages will be translated into each player's locale.
+# Whether messages will be translated into the language the player's game is set to.
 # Commands run from the console will be translated into the host's locale.
 # If false, all messages will be translated into the default locale.
 per-user-translations: true
