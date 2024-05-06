@@ -6,3 +6,10 @@ per-user-translations: true
 # If per-user-translations is false or the user does not have a supported locale, this locale will be used.
 # A list of locales is at https://www.localeplanet.com/java/
 default-locale: "en"
+# Whether to look up offline players' UUIDs from Mojang servers.
+# When requesting the name history of an offline player by username, the plugin requests the player's current UUID
+# from Mojang servers (since the UUID the username belongs to could have changed since the player last joined).
+enable-mojang-lookups: true
+# The time in milliseconds to wait for a response from Mojang servers before giving up.
+# 0 or less means no timeout.
+mojang-timeout: 5000

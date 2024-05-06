@@ -40,17 +40,18 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
     }
 
     private void runWithUsername(CommandSender sender, String username) {
-        if (username.length() > 16) {
+        Optional<MojangAPI> apiOpt = plugin.getMojangAPI();
+        if (!apiOpt.isPresent() || username.length() > 16) {
             plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
             return;
         }
-        plugin.log("Fetching name history for %s from Mojang API", username);
+        plugin.log("Fetching UUID for %s from Mojang API", username);
         plugin.sendMessage(sender, Messages.UUID_LOOKUP);
-        plugin.scheduleAsync(() -> lookupUUIDFromMojang(sender, username));
+        plugin.scheduleAsync(() -> lookupUUIDFromMojangAsync(sender, username, apiOpt.get()));
     }
-    private void lookupUUIDFromMojang(CommandSender sender, String username) {
+    private void lookupUUIDFromMojangAsync(CommandSender sender, String username, MojangAPI api) {
         try {
-            Optional<UUID> uuidOpt = plugin.getMojangAPI().getUUID(username);
+            Optional<UUID> uuidOpt = api.getUUID(username);
             plugin.scheduleNextTick(() -> {
                 if (!uuidOpt.isPresent()) {
                     plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);

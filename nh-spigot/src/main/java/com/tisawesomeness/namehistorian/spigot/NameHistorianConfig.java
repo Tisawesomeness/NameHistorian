@@ -4,6 +4,7 @@ import lombok.Getter;
 import net.kyori.adventure.translation.Translator;
 import org.bukkit.configuration.file.FileConfiguration;
 
+import javax.annotation.Nonnegative;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -12,11 +13,16 @@ public class NameHistorianConfig {
 
     private final boolean perUserTranslations;
     private final Locale defaultLocale;
+    private final boolean enableMojangLookups;
+    @Nonnegative
+    private final int mojangTimeout;
 
     public NameHistorianConfig(NameHistorianSpigot plugin) {
         FileConfiguration conf = plugin.getConfig();
-        this.perUserTranslations = conf.getBoolean("per-user-translations", false);
-        this.defaultLocale = parseLocale(plugin).orElse(TranslationManager.PLUGIN_DEFAULT);
+        perUserTranslations = conf.getBoolean("per-user-translations", false);
+        defaultLocale = parseLocale(plugin).orElse(TranslationManager.PLUGIN_DEFAULT);
+        enableMojangLookups = conf.getBoolean("enable-mojang-lookups", true);
+        mojangTimeout = Math.max(0, conf.getInt("mojang-timeout", 5000));
     }
 
     private static Optional<Locale> parseLocale(NameHistorianSpigot plugin) {

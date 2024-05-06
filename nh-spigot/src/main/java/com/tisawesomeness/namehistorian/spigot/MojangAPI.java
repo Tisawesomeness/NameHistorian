@@ -8,6 +8,7 @@ import com.google.gson.JsonSyntaxException;
 import com.tisawesomeness.namehistorian.Util;
 import lombok.Value;
 
+import javax.annotation.Nonnegative;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -21,11 +22,13 @@ import java.util.concurrent.ExecutionException;
 public class MojangAPI {
 
     private static final Gson GSON = new Gson();
-    private static final int TIMEOUT = 5000;
 
     private final LoadingCache<String, Optional<UUID>> uuidLookupCache;
+    @Nonnegative
+    private final int timeout;
 
-    public MojangAPI() {
+    public MojangAPI(@Nonnegative int timeout) {
+        this.timeout = timeout;
         uuidLookupCache = CacheBuilder.newBuilder()
                 .expireAfterWrite(Duration.ofMinutes(1))
                 .build(new CacheLoader<String, Optional<UUID>>() {
@@ -64,13 +67,13 @@ public class MojangAPI {
         }
     }
 
-    private static HttpURLConnection getConnection(URL url) throws IOException {
+    private HttpURLConnection getConnection(URL url) throws IOException {
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
         con.setRequestProperty("Content-Type", "application/json");
         con.setRequestProperty("Accept", "application/json");
-        con.setConnectTimeout(TIMEOUT);
-        con.setReadTimeout(TIMEOUT);
+        con.setConnectTimeout(timeout);
+        con.setReadTimeout(timeout);
         return con;
     }
 

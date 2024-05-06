@@ -2,7 +2,6 @@ package com.tisawesomeness.namehistorian.spigot;
 
 import com.tisawesomeness.namehistorian.NameHistorian;
 import com.tisawesomeness.namehistorian.NamedPlayer;
-
 import com.tisawesomeness.namehistorian.Util;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.Component;
@@ -40,7 +39,7 @@ public final class NameHistorianSpigot extends JavaPlugin {
     private @Nullable BukkitAudiences adventure;
     private @Nullable NameHistorianConfig config;
     private @Nullable TranslationManager translationManager;
-    private @Nullable MojangAPI mojangAPI;
+    private @Nullable MojangAPI mojangAPI; // null if disabled in config
     private @Nullable NameHistorian historian;
 
     @Override
@@ -60,7 +59,9 @@ public final class NameHistorianSpigot extends JavaPlugin {
         assert config != null;
         translationManager.init(config);
 
-        mojangAPI = new MojangAPI();
+        if (config.isEnableMojangLookups()) {
+            mojangAPI = new MojangAPI(config.getMojangTimeout());
+        }
 
         Path dbPath = dataPath.resolve("history.db");
         try {
@@ -86,6 +87,11 @@ public final class NameHistorianSpigot extends JavaPlugin {
         config = new NameHistorianConfig(this);
         if (translationManager != null) {
             translationManager.init(config);
+        }
+        if (config.isEnableMojangLookups()) {
+            mojangAPI = new MojangAPI(config.getMojangTimeout());
+        } else {
+            mojangAPI = null;
         }
     }
 
@@ -120,11 +126,8 @@ public final class NameHistorianSpigot extends JavaPlugin {
         }
         return adventure;
     }
-    public MojangAPI getMojangAPI() {
-        if (mojangAPI == null) {
-            throw new IllegalStateException("Tried to get MojangAPI instance before plugin enabled");
-        }
-        return mojangAPI;
+    public Optional<MojangAPI> getMojangAPI() {
+        return Optional.ofNullable(mojangAPI);
     }
     public NameHistorian getHistorian() {
         if (historian == null) {
