@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -36,6 +38,30 @@ public final class Util {
             }
         }
         return true;
+    }
+
+    /**
+     * Parses a UUID from string, with or without dashes
+     * @param str the input string
+     * @return the UUID, or empty if the string could not be parsed
+     */
+    public static Optional<UUID> parseUUID(String str) {
+        String uuid = lengthenUUIDString(str);
+        try {
+            return Optional.of(UUID.fromString(uuid));
+        } catch (IllegalArgumentException ex) {
+            return Optional.empty();
+        }
+    }
+    private static String lengthenUUIDString(String str) {
+        if (str.length() == 32) {
+            return str.substring(0, 8) + "-" +
+                    str.substring(8, 12) + "-" +
+                    str.substring(12, 16) + "-" +
+                    str.substring(16, 20) + "-" +
+                    str.substring(20);
+        }
+        return str;
     }
 
     /**

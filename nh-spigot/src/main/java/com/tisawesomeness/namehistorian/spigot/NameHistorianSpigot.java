@@ -3,6 +3,7 @@ package com.tisawesomeness.namehistorian.spigot;
 import com.tisawesomeness.namehistorian.NameHistorian;
 import com.tisawesomeness.namehistorian.NamedPlayer;
 
+import com.tisawesomeness.namehistorian.Util;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
@@ -128,16 +129,16 @@ public final class NameHistorianSpigot extends JavaPlugin {
         if (playerNameOrUUID.length() <= 16) {
             return Optional.ofNullable(getServer().getPlayer(playerNameOrUUID));
         }
-        try {
-            OfflinePlayer p = getServer().getOfflinePlayer(UUID.fromString(playerNameOrUUID));
-            // OfflinePlayer returned even if player never seen, check if player seen
-            if (p.getLastPlayed() == 0) {
-                return Optional.empty();
-            }
-            return Optional.of(p);
-        } catch (IllegalArgumentException ignored) {
+        Optional<UUID> uuidOpt = Util.parseUUID(playerNameOrUUID);
+        if (!uuidOpt.isPresent()) {
             return Optional.empty();
         }
+        OfflinePlayer p = getServer().getOfflinePlayer(uuidOpt.get());
+        // OfflinePlayer returned even if player never seen, check if player seen
+        if (p.getLastPlayed() == 0) {
+            return Optional.empty();
+        }
+        return Optional.of(p);
     }
 
     public void sendMessage(CommandSender sender, Component msg) {
@@ -150,6 +151,10 @@ public final class NameHistorianSpigot extends JavaPlugin {
         sendMessage(sender, msg.build(a0, a1));
     }
 
+    @FormatMethod
+    public void log(String msg, Object... args) {
+        getLogger().info(String.format(msg, args));
+    }
     @FormatMethod
     public void warn(String msg, Object... args) {
         getLogger().warning(String.format(msg, args));

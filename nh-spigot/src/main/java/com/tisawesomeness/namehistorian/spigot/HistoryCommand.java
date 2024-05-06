@@ -10,6 +10,7 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -29,20 +30,38 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
             plugin.sendMessage(sender, Messages.HISTORY_USAGE, label);
             return true;
         }
-        Optional<OfflinePlayer> playerOpt = plugin.getPlayer(args[0]);
-        if (!playerOpt.isPresent()) {
-            plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
-            return true;
-        }
-        OfflinePlayer player = playerOpt.get();
         try {
-            List<NameRecord> history = plugin.getHistorian().getNameHistory(player.getUniqueId());
-            printNameHistory(sender, history, player.isOnline());
+            run(sender, args[0]);
         } catch (SQLException ex) {
-            plugin.err("Error fetching name history for %s", ex, player.getUniqueId());
+            plugin.err("Error fetching name history for %s", ex, args[0]);
             plugin.sendMessage(sender, Messages.FETCH_ERROR);
+        } catch (IOException ex) {
+            plugin.err("Error fetching name history for %s", ex, args[0]);
+            plugin.sendMessage(sender, Messages.MOJANG_ERROR);
         }
         return true;
+    }
+
+    private void run(CommandSender sender, String username) throws SQLException, IOException {
+        Optional<OfflinePlayer> playerOpt = plugin.getPlayer(username);
+        if (playerOpt.isPresent()) {
+            OfflinePlayer player = playerOpt.get();
+            List<NameRecord> history = plugin.getHistorian().getNameHistory(player.getUniqueId());
+            printNameHistory(sender, history, player.isOnline());
+            return;
+        }
+        if (username.length() > 16) {
+            plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
+            return;
+        }
+        plugin.log("Fetching name history for %s from Mojang API", username);
+        Optional<UUID> uuidOpt = MojangAPI.getUUID(username);
+        if (!uuidOpt.isPresent()) {
+            plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
+            return;
+        }
+        List<NameRecord> history = plugin.getHistorian().getNameHistory(uuidOpt.get());
+        printNameHistory(sender, history, false);
     }
 
     private void printNameHistory(CommandSender sender, List<NameRecord> nameHistory, boolean isOnline) {
