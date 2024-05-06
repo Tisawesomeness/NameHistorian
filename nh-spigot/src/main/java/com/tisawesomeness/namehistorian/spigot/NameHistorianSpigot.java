@@ -40,6 +40,7 @@ public final class NameHistorianSpigot extends JavaPlugin {
     private @Nullable BukkitAudiences adventure;
     private @Nullable NameHistorianConfig config;
     private @Nullable TranslationManager translationManager;
+    private @Nullable MojangAPI mojangAPI;
     private @Nullable NameHistorian historian;
 
     @Override
@@ -58,6 +59,8 @@ public final class NameHistorianSpigot extends JavaPlugin {
         translationManager = new TranslationManager(this);
         assert config != null;
         translationManager.init(config);
+
+        mojangAPI = new MojangAPI();
 
         Path dbPath = dataPath.resolve("history.db");
         try {
@@ -116,6 +119,12 @@ public final class NameHistorianSpigot extends JavaPlugin {
             throw new IllegalStateException("Tried to get adventure instance before plugin enabled");
         }
         return adventure;
+    }
+    public MojangAPI getMojangAPI() {
+        if (mojangAPI == null) {
+            throw new IllegalStateException("Tried to get MojangAPI instance before plugin enabled");
+        }
+        return mojangAPI;
     }
     public NameHistorian getHistorian() {
         if (historian == null) {

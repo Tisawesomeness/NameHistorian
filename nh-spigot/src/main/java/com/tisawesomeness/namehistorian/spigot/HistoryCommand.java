@@ -50,7 +50,7 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
     }
     private void lookupUUIDFromMojang(CommandSender sender, String username) {
         try {
-            Optional<UUID> uuidOpt = MojangAPI.getUUID(username);
+            Optional<UUID> uuidOpt = plugin.getMojangAPI().getUUID(username);
             plugin.scheduleNextTick(() -> {
                 if (!uuidOpt.isPresent()) {
                     plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
