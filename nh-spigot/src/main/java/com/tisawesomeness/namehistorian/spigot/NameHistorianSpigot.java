@@ -1,5 +1,6 @@
 package com.tisawesomeness.namehistorian.spigot;
 
+import com.tchristofferson.configupdater.ConfigUpdater;
 import com.tisawesomeness.namehistorian.NameHistorian;
 import com.tisawesomeness.namehistorian.NamedPlayer;
 import com.tisawesomeness.namehistorian.Util;
@@ -14,6 +15,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.formatter.qual.FormatMethod;
 
 import javax.annotation.Nullable;
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -46,7 +48,19 @@ public final class NameHistorianSpigot extends JavaPlugin {
     public void onEnable() {
         adventure = BukkitAudiences.create(this);
 
-        saveDefaultConfig();
+        File configFile = new File(getDataFolder(), "config.yml");
+        if (configFile.exists()) {
+            getConfig().options().copyDefaults(true);
+            try {
+                ConfigUpdater.update(this, "config.yml", configFile);
+            } catch (IOException ex) {
+                err("Error while trying to update config", ex);
+                // Non-fatal
+            }
+            reloadConfig();
+        } else {
+            saveDefaultConfig();
+        }
         config = new NameHistorianConfig(this);
 
         Path dataPath = getDataFolder().toPath();
