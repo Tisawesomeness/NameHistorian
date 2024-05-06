@@ -141,6 +141,13 @@ public final class NameHistorianSpigot extends JavaPlugin {
         return Optional.of(p);
     }
 
+    public void scheduleNextTick(Runnable runnable) {
+        getServer().getScheduler().runTask(this, runnable);
+    }
+    public void scheduleAsync(Runnable runnable) {
+        getServer().getScheduler().runTaskAsynchronously(this, runnable);
+    }
+
     public void sendMessage(CommandSender sender, Component msg) {
         getAdventure().sender(sender).sendMessage(PREFIX.append(msg));
     }
