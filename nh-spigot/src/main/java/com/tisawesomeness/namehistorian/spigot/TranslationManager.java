@@ -9,11 +9,13 @@ import net.kyori.adventure.translation.GlobalTranslator;
 import net.kyori.adventure.translation.TranslationRegistry;
 import net.kyori.adventure.translation.Translator;
 import net.kyori.adventure.util.UTF8ResourceBundleControl;
+import nu.studer.java.util.OrderedProperties;
 
 import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,7 +35,7 @@ public class TranslationManager {
         Path translationsDirectory = tryCreateTranslationsDirectory();
         if (translationsDirectory != null) {
             try {
-                writeTranslationsFromJarIfMissing(translationsDirectory);
+                writeTranslationsFromJar(translationsDirectory);
             } catch (IOException ex) {
                 plugin.err("Could not write default translations file", ex);
                 // Non-fatal
@@ -53,15 +55,39 @@ public class TranslationManager {
         }
     }
 
-    private void writeTranslationsFromJarIfMissing(Path translationsDirectory) throws IOException {
+    private void writeTranslationsFromJar(Path translationsDirectory) throws IOException {
         Path translationsFile = translationsDirectory.resolve("en.properties");
-        if (!Files.exists(translationsFile)) {
-            @Cleanup InputStream is = plugin.getResource("lang/namehistorian_en.properties");
-            if (is == null) {
-                throw new AssertionError("Some classloader trickery is going on");
-            }
-            Files.copy(is, translationsFile);
+        @Cleanup InputStream jarInputStream = plugin.getResource("lang/namehistorian_en.properties");
+        if (jarInputStream == null) {
+            throw new AssertionError("Some classloader trickery is going on");
         }
+        if (Files.exists(translationsFile)) {
+            fillMissingKeys(jarInputStream, translationsFile);
+        } else {
+            Files.copy(jarInputStream, translationsFile);
+        }
+    }
+    private static void fillMissingKeys(InputStream jarInputStream, Path translationsFile) throws IOException {
+        OrderedProperties jarProperties = dateSuppressingProperties();
+        jarProperties.load(jarInputStream);
+
+        OrderedProperties fileProperties = dateSuppressingProperties();
+        @Cleanup InputStream fileInputStream = Files.newInputStream(translationsFile);
+        fileProperties.load(fileInputStream);
+
+        // Takes default translations and replaces them with any modifications from the custom folder
+        // Effectively the same as adding missing keys to the custom translations file
+        for (Map.Entry<String, String> fileProperty : fileProperties.entrySet()) {
+            jarProperties.setProperty(fileProperty.getKey(), fileProperty.getValue());
+        }
+
+        @Cleanup Writer fileOutputWriter = Files.newBufferedWriter(translationsFile);
+        jarProperties.store(fileOutputWriter, null);
+    }
+    private static OrderedProperties dateSuppressingProperties() {
+        return new OrderedProperties.OrderedPropertiesBuilder()
+                .withSuppressDateInComment(true)
+                .build();
     }
 
     private void loadTranslations(NameHistorianConfig config, @Nullable Path translationsDirectory) {
@@ -137,7 +163,7 @@ public class TranslationManager {
         try {
             return readBundle(translationFile);
         } catch (IOException ex) {
-            plugin.err("Failed to register translation file %s", ex, translationFile);
+            plugin.err("Failed to read translation file %s", ex, translationFile);
             return Optional.empty();
         }
     }
