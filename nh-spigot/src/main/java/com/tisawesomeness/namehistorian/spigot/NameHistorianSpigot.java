@@ -174,14 +174,14 @@ public final class NameHistorianSpigot extends JavaPlugin {
         getServer().getScheduler().runTaskAsynchronously(this, runnable);
     }
 
-    public void sendMessage(CommandSender sender, Component msg) {
-        getAdventure().sender(sender).sendMessage(PREFIX.append(msg));
+    public void sendMessage(CommandSender sendTo, Component msg) {
+        getAdventure().sender(sendTo).sendMessage(PREFIX.append(msg));
     }
-    public <A0> void sendMessage(CommandSender sender, Messages.A1<A0> msg, A0 a0) {
-        sendMessage(sender, msg.build(a0));
+    public <A0> void sendMessage(CommandSender sendTo, Messages.A1<A0> msg, A0 a0) {
+        sendMessage(sendTo, msg.build(a0));
     }
-    public <A0, A1> void sendMessage(CommandSender sender, Messages.A2<A0, A1> msg, A0 a0, A1 a1) {
-        sendMessage(sender, msg.build(a0, a1));
+    public <A0, A1> void sendMessage(CommandSender sendTo, Messages.A2<A0, A1> msg, A0 a0, A1 a1) {
+        sendMessage(sendTo, msg.build(a0, a1));
     }
 
     @FormatMethod

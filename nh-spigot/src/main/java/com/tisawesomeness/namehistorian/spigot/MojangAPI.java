@@ -23,7 +23,7 @@ public class MojangAPI {
 
     private static final Gson GSON = new Gson();
 
-    private final LoadingCache<String, Optional<UUID>> uuidLookupCache;
+    private final LoadingCache<APICompatibleUsername, Optional<UUID>> uuidLookupCache;
     @Nonnegative
     private final int timeout;
 
@@ -31,15 +31,15 @@ public class MojangAPI {
         this.timeout = timeout;
         uuidLookupCache = CacheBuilder.newBuilder()
                 .expireAfterWrite(Duration.ofMinutes(1))
-                .build(new CacheLoader<String, Optional<UUID>>() {
+                .build(new CacheLoader<APICompatibleUsername, Optional<UUID>>() {
                     @Override
-                    public Optional<UUID> load(String s) throws IOException {
-                        return lookupUUID(s);
+                    public Optional<UUID> load(APICompatibleUsername u) throws IOException {
+                        return lookupUUID(u);
                     }
                 });
     }
 
-    public Optional<UUID> getUUID(String username) throws IOException {
+    public Optional<UUID> getUUID(APICompatibleUsername username) throws IOException {
         try {
             return uuidLookupCache.get(username);
         } catch (ExecutionException ex) {
@@ -51,7 +51,7 @@ public class MojangAPI {
         }
     }
 
-    private Optional<UUID> lookupUUID(String username) throws IOException {
+    private Optional<UUID> lookupUUID(APICompatibleUsername username) throws IOException {
         URL url = new URL("https://api.mojang.com/users/profiles/minecraft/" + username);
         HttpURLConnection con = getConnection(url);
         try {

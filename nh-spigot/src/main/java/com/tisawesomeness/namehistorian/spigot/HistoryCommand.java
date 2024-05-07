@@ -34,14 +34,20 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
         if (playerOpt.isPresent()) {
             OfflinePlayer player = playerOpt.get();
             fetchNameHistory(sender, player.getUniqueId(), player.isOnline());
+            return true;
         }
-        runWithUsername(sender, args[0]);
+        Optional<APICompatibleUsername> usernameOpt = APICompatibleUsername.of(args[0]);
+        if (!usernameOpt.isPresent()) {
+            plugin.sendMessage(sender, Messages.INVALID_PLAYER, args[0]);
+            return true;
+        }
+        runWithUsername(sender, usernameOpt.get());
         return true;
     }
 
-    private void runWithUsername(CommandSender sender, String username) {
+    private void runWithUsername(CommandSender sender, APICompatibleUsername username) {
         Optional<MojangAPI> apiOpt = plugin.getMojangAPI();
-        if (!apiOpt.isPresent() || username.length() > 16) {
+        if (!apiOpt.isPresent()) {
             plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
             return;
         }
@@ -49,7 +55,7 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
         plugin.sendMessage(sender, Messages.UUID_LOOKUP);
         plugin.scheduleAsync(() -> lookupUUIDFromMojangAsync(sender, username, apiOpt.get()));
     }
-    private void lookupUUIDFromMojangAsync(CommandSender sender, String username, MojangAPI api) {
+    private void lookupUUIDFromMojangAsync(CommandSender sender, APICompatibleUsername username, MojangAPI api) {
         try {
             Optional<UUID> uuidOpt = api.getUUID(username);
             plugin.scheduleNextTick(() -> {

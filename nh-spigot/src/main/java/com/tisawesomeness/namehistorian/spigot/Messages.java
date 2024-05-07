@@ -14,6 +14,9 @@ public class Messages {
     public static final A1<String> HISTORY_USAGE = label -> Component.translatable("namehistorian.history_usage")
             .color(NamedTextColor.RED)
             .arguments(Component.text(label));
+    public static final A1<String> INVALID_PLAYER = input -> Component.translatable("namehistorian.invalid_player")
+            .color(NamedTextColor.RED)
+            .arguments(Component.text(input));
     public static final Component UNKNOWN_PLAYER = Component.translatable("namehistorian.unknown_player")
             .color(NamedTextColor.RED);
     public static final Component FETCH_ERROR = Component.translatable("namehistorian.fetch_error")
