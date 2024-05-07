@@ -19,6 +19,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.MessageFormat;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -186,7 +187,7 @@ public class TranslationManager {
 
     private static void registerFromJar(RegistryAdapter registry) {
         ResourceBundle bundle = ResourceBundle.getBundle("lang/namehistorian", PLUGIN_DEFAULT, UTF8ResourceBundleControl.get());
-        registry.register(PLUGIN_DEFAULT, bundle);
+        registry.registerMissingKeys(PLUGIN_DEFAULT, bundle);
     }
 
     private static class RegistryAdapter {
@@ -204,10 +205,15 @@ public class TranslationManager {
 
         public boolean register(Locale locale, ResourceBundle bundle) {
             boolean registered = tryRegister(locale, bundle);
-            boolean languageOnlyRegistered = languageOnlyLocale(locale)
-                    .map(l -> tryRegister(l, bundle))
-                    .orElse(false);
+            boolean languageOnlyRegistered = registerLanguageOnlyLocaleIfExists(locale, bundle);
             return registered || languageOnlyRegistered;
+        }
+        private boolean registerLanguageOnlyLocaleIfExists(Locale locale, ResourceBundle bundle) {
+            Locale languageOnlyLocale = new Locale(locale.getLanguage());
+            if (languageOnlyLocale.equals(locale) || languageOnlyLocale.equals(PLUGIN_DEFAULT)) {
+                return false;
+            }
+            return tryRegister(locale, bundle);
         }
         private boolean tryRegister(Locale locale, ResourceBundle bundle) {
             if (registeredLocales.contains(locale)) {
@@ -222,12 +228,11 @@ public class TranslationManager {
             return true;
         }
 
-        private static Optional<Locale> languageOnlyLocale(Locale locale) {
-            Locale languageOnlyLocale = new Locale(locale.getLanguage());
-            if (languageOnlyLocale.equals(locale) || languageOnlyLocale.equals(PLUGIN_DEFAULT)) {
-                return Optional.empty();
-            }
-            return Optional.of(languageOnlyLocale);
+        private void registerMissingKeys(Locale locale, ResourceBundle bundle) {
+            registeredLocales.add(locale);
+            bundle.keySet().stream()
+                    .filter(k -> !registry.contains(k))
+                    .forEach(k -> registry.register(k, locale, new MessageFormat(bundle.getString(k))));
         }
 
     }
