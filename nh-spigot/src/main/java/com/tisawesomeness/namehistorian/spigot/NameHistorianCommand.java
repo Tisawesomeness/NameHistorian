@@ -7,6 +7,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.util.StringUtil;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -34,7 +35,7 @@ public final class NameHistorianCommand implements CommandExecutor, TabCompleter
     }
 
     @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
+    public @Nullable List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 1) {
             List<String> completions = Collections.singletonList("reload");
             return StringUtil.copyPartialMatches(args[0], completions, new ArrayList<>());

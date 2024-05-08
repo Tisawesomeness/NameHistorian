@@ -31,6 +31,8 @@ public class Messages {
     public static final A1<UUID> HISTORY_TITLE = uuid -> Component.translatable("namehistorian.history_title")
             .color(NamedTextColor.GOLD)
             .arguments(Component.text(uuid.toString()).color(NamedTextColor.GREEN));
+    public static final Component NEVER_JOINED = Component.translatable("namehistorian.never_joined")
+            .color(NamedTextColor.GRAY);
     /** changeNumber, username */
     public static final A2<Integer, String> USERNAME_LINE = (changeNumber, username) -> Component.translatable("namehistorian.username_line")
             .color(NamedTextColor.BLUE)

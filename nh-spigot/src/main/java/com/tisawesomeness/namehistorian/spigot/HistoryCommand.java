@@ -11,6 +11,7 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -54,7 +55,8 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
         OfflinePlayer player = playerOpt.get();
         Optional<MojangAPI> apiOpt = plugin.getMojangAPI();
         if (player.isOnline() || !apiOpt.isPresent()) {
-            fetchNameHistory(sender, uuid, player.isOnline());
+            JoinStatus joinStatus = player.isOnline() ? JoinStatus.ONLINE : JoinStatus.OFFLINE;
+            fetchNameHistory(sender, uuid, joinStatus);
             return;
         }
         plugin.log("Fetching username for %s from Mojang API", uuid);
@@ -63,27 +65,27 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
     }
     private void lookupUsernameFromMojangAsync(CommandSender sender, UUID uuid, MojangAPI api) {
         try {
-            Optional<String> usernameOpt = api.getUsername(uuid);
-            plugin.scheduleNextTick(() -> {
-                if (!usernameOpt.isPresent()) {
-                    plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
-                    return;
-                }
-                String username = usernameOpt.get();
-                tryRecordName(uuid, username);
-                fetchNameHistory(sender, uuid, false);
-            });
+            String username = api.getUsername(uuid).orElse(null);
+            plugin.scheduleNextTick(() -> processUsernameSync(sender, uuid, username));
         } catch (IOException ex) {
             plugin.err("Error fetching name history for %s", ex, uuid);
             plugin.scheduleNextTick(() -> plugin.sendMessage(sender, Messages.MOJANG_ERROR));
         }
+    }
+    private void processUsernameSync(CommandSender sender, UUID uuid, @Nullable String username) {
+        if (username == null) {
+            plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
+            return;
+        }
+        tryRecordName(uuid, username);
+        fetchNameHistory(sender, uuid, JoinStatus.OFFLINE);
     }
 
     private void runWithUsername(CommandSender sender, APICompatibleUsername username) {
         Optional<Player> playerOpt = plugin.getPlayer(username.toString());
         if (playerOpt.isPresent()) {
             Player player = playerOpt.get();
-            fetchNameHistory(sender, player.getUniqueId(), true);
+            fetchNameHistory(sender, player.getUniqueId(), JoinStatus.ONLINE);
             return;
         }
         Optional<MojangAPI> apiOpt = plugin.getMojangAPI();
@@ -97,20 +99,22 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
     }
     private void lookupUUIDFromMojangAsync(CommandSender sender, APICompatibleUsername username, MojangAPI api) {
         try {
-            Optional<UUID> uuidOpt = api.getUUID(username);
-            plugin.scheduleNextTick(() -> {
-                if (!uuidOpt.isPresent()) {
-                    plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
-                    return;
-                }
-                UUID uuid = uuidOpt.get();
-                tryRecordName(uuid, username.toString());
-                fetchNameHistory(sender, uuid, false);
-            });
+            UUID uuid = api.getUUID(username).orElse(null);
+            plugin.scheduleNextTick(() -> processUUIDSync(sender, username, uuid));
         } catch (IOException ex) {
             plugin.err("Error fetching name history for %s", ex, username);
             plugin.scheduleNextTick(() -> plugin.sendMessage(sender, Messages.MOJANG_ERROR));
         }
+    }
+    private void processUUIDSync(CommandSender sender, APICompatibleUsername username, @Nullable UUID uuid) {
+        if (uuid == null) {
+            plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
+            return;
+        }
+        tryRecordName(uuid, username.toString());
+        boolean hasJoined = plugin.getPlayer(uuid).isPresent();
+        JoinStatus joinStatus = hasJoined ? JoinStatus.OFFLINE : JoinStatus.NEVER_JOINED;
+        fetchNameHistory(sender, uuid, joinStatus);
     }
 
     private void tryRecordName(UUID uuid, String username) {
@@ -121,17 +125,17 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
         }
     }
 
-    private void fetchNameHistory(CommandSender sender, UUID uuid, boolean isOnline) {
+    private void fetchNameHistory(CommandSender sender, UUID uuid, JoinStatus joinStatus) {
         try {
             List<NameRecord> history = plugin.getHistorian().getNameHistory(uuid);
-            printNameHistory(sender, history, isOnline);
+            printNameHistory(sender, history, joinStatus);
         } catch (SQLException ex) {
             plugin.err("Error fetching name history for %s", ex, uuid);
             plugin.sendMessage(sender, Messages.FETCH_ERROR);
         }
     }
 
-    private void printNameHistory(CommandSender sender, List<NameRecord> nameHistory, boolean isOnline) {
+    private void printNameHistory(CommandSender sender, List<NameRecord> nameHistory, JoinStatus joinStatus) {
         if (nameHistory.isEmpty()) {
             plugin.sendMessage(sender, Messages.NO_HISTORY);
             return;
@@ -139,6 +143,10 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
 
         UUID uuid = nameHistory.get(0).getUuid();
         plugin.sendMessage(sender, Messages.HISTORY_TITLE, uuid);
+
+        if (joinStatus == JoinStatus.NEVER_JOINED) {
+            plugin.sendMessage(sender, Messages.NEVER_JOINED);
+        }
 
         for (int i = 0; i < nameHistory.size(); i++) {
             NameRecord nr = nameHistory.get(i);
@@ -148,13 +156,13 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
             plugin.sendMessage(sender, Messages.USERNAME_LINE, changeNumber, nr.getUsername());
 
             // If the player is online, the player was last seen now
-            Instant lastSeen = i == 0 && isOnline ? Instant.now() : nr.getLastSeenTime();
+            Instant lastSeen = i == 0 && joinStatus == JoinStatus.ONLINE ? Instant.now() : nr.getLastSeenTime();
             plugin.sendMessage(sender, Messages.DATE_LINE, nr.getFirstSeenTime(), lastSeen);
         }
     }
 
     @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
+    public @Nullable List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 1) {
             List<String> completions = plugin.getServer().getOnlinePlayers().stream()
                     .map(Player::getName)
@@ -162,6 +170,10 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
             return StringUtil.copyPartialMatches(args[0], completions, new ArrayList<>());
         }
         return null;
+    }
+
+    private enum JoinStatus {
+        ONLINE, OFFLINE, NEVER_JOINED
     }
 
 }
