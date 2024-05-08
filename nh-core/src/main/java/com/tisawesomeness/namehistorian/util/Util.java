@@ -47,6 +47,9 @@ public final class Util {
      */
     public static Optional<UUID> parseUUID(String str) {
         String uuid = lengthenUUIDString(str);
+        if (uuid.length() != 36) {
+            return Optional.empty();
+        }
         try {
             return Optional.of(UUID.fromString(uuid));
         } catch (IllegalArgumentException ex) {
