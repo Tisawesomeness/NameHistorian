@@ -11,7 +11,6 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.checkerframework.checker.formatter.qual.FormatMethod;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -177,15 +176,12 @@ public final class NameHistorianSpigot extends JavaPlugin {
         sendMessage(sendTo, msg.build(a0, a1));
     }
 
-    @FormatMethod
     public void log(String msg, Object... args) {
         getLogger().info(String.format(msg, args));
     }
-    @FormatMethod
     public void warn(String msg, Object... args) {
         getLogger().warning(String.format(msg, args));
     }
-    @FormatMethod
     public void err(String msg, Object... args) {
         getLogger().severe(String.format(msg, args));
     }

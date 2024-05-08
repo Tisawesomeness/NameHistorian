@@ -3,7 +3,6 @@ package com.tisawesomeness.namehistorian;
 import com.tisawesomeness.namehistorian.util.Util;
 import lombok.Cleanup;
 import org.sqlite.SQLiteDataSource;
-import org.sqlite.javax.SQLiteConnectionPoolDataSource;
 
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
@@ -57,7 +56,7 @@ public final class NameHistorian {
      * @throws IllegalStateException if the database is not at the correct version
      */
     public NameHistorian(Path databasePath) throws SQLException {
-        SQLiteDataSource ds = new SQLiteConnectionPoolDataSource();
+        SQLiteDataSource ds = new SQLiteDataSource();
         ds.setUrl("jdbc:sqlite:" + databasePath.toFile().getAbsolutePath());
         source = ds;
 

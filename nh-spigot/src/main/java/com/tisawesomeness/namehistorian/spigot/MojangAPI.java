@@ -15,10 +15,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 public class MojangAPI {
 
@@ -32,10 +32,10 @@ public class MojangAPI {
     public MojangAPI(@Nonnegative int timeout) {
         this.timeout = timeout;
         uuidLookupCache = CacheBuilder.newBuilder()
-                .expireAfterWrite(Duration.ofMinutes(1))
+                .expireAfterWrite(1, TimeUnit.MINUTES)
                 .build(loader(this::lookupUUID));
         usernameLookupCache = CacheBuilder.newBuilder()
-                .expireAfterWrite(Duration.ofMinutes(1))
+                .expireAfterWrite(1, TimeUnit.MINUTES)
                 .build(loader(this::lookupUsername));
     }
     private static <K, V> CacheLoader<K, V> loader(ThrowingFunction<K, V> func) {
