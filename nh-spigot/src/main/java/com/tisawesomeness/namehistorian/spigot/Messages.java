@@ -21,7 +21,7 @@ public class Messages {
             .color(NamedTextColor.RED);
     public static final Component FETCH_ERROR = Component.translatable("namehistorian.fetch_error")
             .color(NamedTextColor.RED);
-    public static final Component UUID_LOOKUP = Component.translatable("namehistorian.uuid_lookup")
+    public static final Component MOJANG_LOOKUP = Component.translatable("namehistorian.mojang_lookup")
             .color(NamedTextColor.GRAY);
     public static final Component MOJANG_ERROR = Component.translatable("namehistorian.mojang_error")
             .color(NamedTextColor.RED);

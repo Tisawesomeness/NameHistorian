@@ -1,6 +1,6 @@
 package com.tisawesomeness.namehistorian.spigot;
 
-import com.tisawesomeness.namehistorian.Tuple;
+import com.tisawesomeness.namehistorian.util.Tuple;
 import lombok.Cleanup;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

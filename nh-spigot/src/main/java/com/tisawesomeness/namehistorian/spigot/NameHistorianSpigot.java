@@ -3,7 +3,6 @@ package com.tisawesomeness.namehistorian.spigot;
 import com.tchristofferson.configupdater.ConfigUpdater;
 import com.tisawesomeness.namehistorian.NameHistorian;
 import com.tisawesomeness.namehistorian.NamedPlayer;
-import com.tisawesomeness.namehistorian.Util;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
@@ -150,21 +149,15 @@ public final class NameHistorianSpigot extends JavaPlugin {
         return historian;
     }
 
-    public Optional<OfflinePlayer> getPlayer(String playerNameOrUUID) {
-        // Longer usernames are not allowed in (at least) 1.19
-        if (playerNameOrUUID.length() <= 16) {
-            return Optional.ofNullable(getServer().getPlayer(playerNameOrUUID));
-        }
-        Optional<UUID> uuidOpt = Util.parseUUID(playerNameOrUUID);
-        if (!uuidOpt.isPresent()) {
-            return Optional.empty();
-        }
-        OfflinePlayer p = getServer().getOfflinePlayer(uuidOpt.get());
-        // OfflinePlayer returned even if player never seen, check if player seen
+    public Optional<OfflinePlayer> getPlayer(UUID uuid) {
+        OfflinePlayer p = getServer().getOfflinePlayer(uuid);
         if (p.getLastPlayed() == 0) {
             return Optional.empty();
         }
         return Optional.of(p);
+    }
+    public Optional<Player> getPlayer(String username) {
+        return Optional.ofNullable(getServer().getPlayer(username));
     }
 
     public void scheduleNextTick(Runnable runnable) {

@@ -1,6 +1,7 @@
 package com.tisawesomeness.namehistorian.spigot;
 
 import com.tisawesomeness.namehistorian.NameRecord;
+import com.tisawesomeness.namehistorian.util.Util;
 import lombok.AllArgsConstructor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -30,29 +31,68 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
             plugin.sendMessage(sender, Messages.HISTORY_USAGE, label);
             return true;
         }
-        Optional<OfflinePlayer> playerOpt = plugin.getPlayer(args[0]);
-        if (playerOpt.isPresent()) {
-            OfflinePlayer player = playerOpt.get();
-            fetchNameHistory(sender, player.getUniqueId(), player.isOnline());
+        Optional<UUID> uuidOpt = Util.parseUUID(args[0]);
+        if (uuidOpt.isPresent()) {
+            runWithUuid(sender, uuidOpt.get());
             return true;
         }
         Optional<APICompatibleUsername> usernameOpt = APICompatibleUsername.of(args[0]);
-        if (!usernameOpt.isPresent()) {
-            plugin.sendMessage(sender, Messages.INVALID_PLAYER, args[0]);
+        if (usernameOpt.isPresent()) {
+            runWithUsername(sender, usernameOpt.get());
             return true;
         }
-        runWithUsername(sender, usernameOpt.get());
+        plugin.sendMessage(sender, Messages.INVALID_PLAYER, args[0]);
         return true;
     }
 
+    private void runWithUuid(CommandSender sender, UUID uuid) {
+        Optional<OfflinePlayer> playerOpt = plugin.getPlayer(uuid);
+        if (!playerOpt.isPresent()) {
+            plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
+            return;
+        }
+        OfflinePlayer player = playerOpt.get();
+        Optional<MojangAPI> apiOpt = plugin.getMojangAPI();
+        if (player.isOnline() || !apiOpt.isPresent()) {
+            fetchNameHistory(sender, uuid, player.isOnline());
+            return;
+        }
+        plugin.log("Fetching username for %s from Mojang API", uuid);
+        plugin.sendMessage(sender, Messages.MOJANG_LOOKUP);
+        plugin.scheduleAsync(() -> lookupUsernameFromMojangAsync(sender, uuid, apiOpt.get()));
+    }
+    private void lookupUsernameFromMojangAsync(CommandSender sender, UUID uuid, MojangAPI api) {
+        try {
+            Optional<String> usernameOpt = api.getUsername(uuid);
+            plugin.scheduleNextTick(() -> {
+                if (!usernameOpt.isPresent()) {
+                    plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
+                    return;
+                }
+                String username = usernameOpt.get();
+                tryRecordName(uuid, username);
+                fetchNameHistory(sender, uuid, false);
+            });
+        } catch (IOException ex) {
+            plugin.err("Error fetching name history for %s", ex, uuid);
+            plugin.scheduleNextTick(() -> plugin.sendMessage(sender, Messages.MOJANG_ERROR));
+        }
+    }
+
     private void runWithUsername(CommandSender sender, APICompatibleUsername username) {
+        Optional<Player> playerOpt = plugin.getPlayer(username.toString());
+        if (playerOpt.isPresent()) {
+            Player player = playerOpt.get();
+            fetchNameHistory(sender, player.getUniqueId(), true);
+            return;
+        }
         Optional<MojangAPI> apiOpt = plugin.getMojangAPI();
         if (!apiOpt.isPresent()) {
             plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
             return;
         }
         plugin.log("Fetching UUID for %s from Mojang API", username);
-        plugin.sendMessage(sender, Messages.UUID_LOOKUP);
+        plugin.sendMessage(sender, Messages.MOJANG_LOOKUP);
         plugin.scheduleAsync(() -> lookupUUIDFromMojangAsync(sender, username, apiOpt.get()));
     }
     private void lookupUUIDFromMojangAsync(CommandSender sender, APICompatibleUsername username, MojangAPI api) {
@@ -63,11 +103,21 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
                     plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
                     return;
                 }
-                fetchNameHistory(sender, uuidOpt.get(), false);
+                UUID uuid = uuidOpt.get();
+                tryRecordName(uuid, username.toString());
+                fetchNameHistory(sender, uuid, false);
             });
         } catch (IOException ex) {
             plugin.err("Error fetching name history for %s", ex, username);
             plugin.scheduleNextTick(() -> plugin.sendMessage(sender, Messages.MOJANG_ERROR));
+        }
+    }
+
+    private void tryRecordName(UUID uuid, String username) {
+        try {
+            plugin.getHistorian().recordName(uuid, username);
+        } catch (SQLException ex) {
+            plugin.err("Error recording name for %s - %s", ex, username, uuid);
         }
     }
 

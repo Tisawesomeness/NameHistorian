@@ -1,5 +1,6 @@
 package com.tisawesomeness.namehistorian;
 
+import com.tisawesomeness.namehistorian.util.Util;
 import lombok.Value;
 
 import javax.annotation.Nullable;

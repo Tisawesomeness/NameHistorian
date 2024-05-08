@@ -1,4 +1,4 @@
-package com.tisawesomeness.namehistorian;
+package com.tisawesomeness.namehistorian.util;
 
 import javax.annotation.Nonnull;
 import javax.annotation.meta.TypeQualifierDefault;

@@ -5,7 +5,8 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
-import com.tisawesomeness.namehistorian.Util;
+import com.tisawesomeness.namehistorian.util.ThrowingFunction;
+import com.tisawesomeness.namehistorian.util.Util;
 import lombok.Value;
 
 import javax.annotation.Nonnegative;
@@ -24,6 +25,7 @@ public class MojangAPI {
     private static final Gson GSON = new Gson();
 
     private final LoadingCache<APICompatibleUsername, Optional<UUID>> uuidLookupCache;
+    private final LoadingCache<UUID, Optional<String>> usernameLookupCache;
     @Nonnegative
     private final int timeout;
 
@@ -31,42 +33,68 @@ public class MojangAPI {
         this.timeout = timeout;
         uuidLookupCache = CacheBuilder.newBuilder()
                 .expireAfterWrite(Duration.ofMinutes(1))
-                .build(new CacheLoader<APICompatibleUsername, Optional<UUID>>() {
-                    @Override
-                    public Optional<UUID> load(APICompatibleUsername u) throws IOException {
-                        return lookupUUID(u);
-                    }
-                });
+                .build(loader(this::lookupUUID));
+        usernameLookupCache = CacheBuilder.newBuilder()
+                .expireAfterWrite(Duration.ofMinutes(1))
+                .build(loader(this::lookupUsername));
+    }
+    private static <K, V> CacheLoader<K, V> loader(ThrowingFunction<K, V> func) {
+        return new CacheLoader<K, V>() {
+            @Override
+            public V load(K key) throws Exception {
+                return func.apply(key);
+            }
+        };
     }
 
     public Optional<UUID> getUUID(APICompatibleUsername username) throws IOException {
         try {
             return uuidLookupCache.get(username);
         } catch (ExecutionException ex) {
-            Throwable cause = ex.getCause();
-            if (cause instanceof IOException) {
-                throw (IOException) cause;
-            }
-            throw new RuntimeException(cause);
+            return rethrow(ex);
         }
     }
-
     private Optional<UUID> lookupUUID(APICompatibleUsername username) throws IOException {
         URL url = new URL("https://api.mojang.com/users/profiles/minecraft/" + username);
+        return makeRequest(url)
+                .map(Response::getId)
+                .flatMap(Util::parseUUID);
+    }
+
+    public Optional<String> getUsername(UUID uuid) throws IOException {
+        try {
+            return usernameLookupCache.get(uuid);
+        } catch (ExecutionException ex) {
+            return rethrow(ex);
+        }
+    }
+    private Optional<String> lookupUsername(UUID uuid) throws IOException {
+        String undashedUuid = uuid.toString().replace("-", "");
+        URL url = new URL("https://sessionserver.mojang.com/session/minecraft/profile/" + undashedUuid);
+        return makeRequest(url)
+                .map(Response::getName);
+    }
+
+    private <T> T rethrow(ExecutionException ex) throws IOException {
+        Throwable cause = ex.getCause();
+        if (cause instanceof IOException) {
+            throw (IOException) cause;
+        }
+        throw new RuntimeException(cause);
+    }
+
+    private Optional<Response> makeRequest(URL url) throws IOException {
         HttpURLConnection con = getConnection(url);
         try {
             con.connect();
             if (con.getResponseCode() != 200) {
                 return Optional.empty();
             }
-            return read(con.getInputStream())
-                    .map(Response::getId)
-                    .flatMap(Util::parseUUID);
+            return read(con.getInputStream());
         } finally {
             con.disconnect();
         }
     }
-
     private HttpURLConnection getConnection(URL url) throws IOException {
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
@@ -84,9 +112,11 @@ public class MojangAPI {
             return Optional.empty();
         }
     }
+    // Shared across both endpoints
     @Value
     private static class Response {
         String id;
+        String name;
     }
 
 }

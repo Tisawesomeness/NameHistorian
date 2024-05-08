@@ -1,4 +1,4 @@
-package com.tisawesomeness.namehistorian;
+package com.tisawesomeness.namehistorian.util;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

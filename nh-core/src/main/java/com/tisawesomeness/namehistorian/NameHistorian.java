@@ -1,5 +1,6 @@
 package com.tisawesomeness.namehistorian;
 
+import com.tisawesomeness.namehistorian.util.Util;
 import lombok.Cleanup;
 import org.sqlite.SQLiteDataSource;
 import org.sqlite.javax.SQLiteConnectionPoolDataSource;
@@ -128,7 +129,7 @@ public final class NameHistorian {
         });
     }
 
-    private void recordName(Connection con, NameRecord recordToAdd) throws SQLException {
+    private static void recordName(Connection con, NameRecord recordToAdd) throws SQLException {
         NameDBRecord latestRecord = findNameRecord(con, recordToAdd.getUuid());
         if (latestRecord != null && latestRecord.getUsername().equals(recordToAdd.getUsername())) {
             updateLastSeenTime(con, latestRecord.getId());
@@ -137,7 +138,7 @@ public final class NameHistorian {
         }
     }
 
-    private @Nullable NameDBRecord findNameRecord(Connection con, UUID uuid) throws SQLException {
+    private static @Nullable NameDBRecord findNameRecord(Connection con, UUID uuid) throws SQLException {
         @Cleanup PreparedStatement st = con.prepareStatement(READ_LATEST_SQL);
         st.setString(1, uuid.toString());
         @Cleanup ResultSet rs = st.executeQuery();
@@ -147,14 +148,14 @@ public final class NameHistorian {
         return null;
     }
 
-    private void updateLastSeenTime(Connection con, int id) throws SQLException {
+    private static void updateLastSeenTime(Connection con, int id) throws SQLException {
         @Cleanup PreparedStatement st = con.prepareStatement(UPDATE_LAST_SEEN_SQL);
         st.setLong(1, System.currentTimeMillis());
         st.setInt(2, id);
         st.executeUpdate();
     }
 
-    private void recordNewName(Connection con, NameRecord nr) throws SQLException {
+    private static void recordNewName(Connection con, NameRecord nr) throws SQLException {
         @Cleanup PreparedStatement st = con.prepareStatement(INSERT_NAME_RECORD_SQL);
         st.setString(1, nr.getUuid().toString());
         st.setString(2, nr.getUsername());
@@ -183,7 +184,7 @@ public final class NameHistorian {
         return list;
     }
 
-    private NameDBRecord readDBRecord(ResultSet rs, UUID uuid) throws SQLException {
+    private static NameDBRecord readDBRecord(ResultSet rs, UUID uuid) throws SQLException {
         return new NameDBRecord(
                 rs.getInt("id"),
                 uuid.toString(),
@@ -194,11 +195,11 @@ public final class NameHistorian {
         );
     }
 
-    private @Nullable Long readNullableLong(ResultSet rs, String column) throws SQLException {
+    private static @Nullable Long readNullableLong(ResultSet rs, String column) throws SQLException {
         long l = rs.getLong(column);
         return rs.wasNull() ? null : l;
     }
-    private void setNullableLong(PreparedStatement st, int index, @Nullable Long value) throws SQLException {
+    private static void setNullableLong(PreparedStatement st, int index, @Nullable Long value) throws SQLException {
         if (value == null) {
             st.setNull(index, Types.INTEGER);
         } else {
