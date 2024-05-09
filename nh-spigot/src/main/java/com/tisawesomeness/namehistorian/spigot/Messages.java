@@ -1,6 +1,7 @@
 package com.tisawesomeness.namehistorian.spigot;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 
 import java.time.Instant;
@@ -9,6 +10,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 public class Messages {
+
+    private static final int COPY_EVENT_VERSION = 15;
 
     /** commandLabel */
     public static final A1<String> HISTORY_USAGE = label -> Component.translatable("namehistorian.history_usage")
@@ -31,7 +34,7 @@ public class Messages {
     /** uuid */
     public static final A1<UUID> HISTORY_TITLE = uuid -> Component.translatable("namehistorian.history_title")
             .color(NamedTextColor.GOLD)
-            .arguments(Component.text(uuid.toString()).color(NamedTextColor.GREEN));
+            .arguments(copyableText(uuid.toString()).color(NamedTextColor.GREEN));
     public static final Component NEVER_JOINED = Component.translatable("namehistorian.never_joined")
             .color(NamedTextColor.GRAY);
     /** changeNumber, username */
@@ -39,7 +42,7 @@ public class Messages {
             .color(NamedTextColor.BLUE)
             .arguments(
                     Component.text(changeNumber),
-                    Component.text(username).color(NamedTextColor.LIGHT_PURPLE)
+                    copyableText(username).color(NamedTextColor.LIGHT_PURPLE)
             );
     /** firstSeen, lastSeen */
     public static final A2<Instant, Instant> DATE_LINE = (firstSeen, lastSeen) -> Component.translatable("namehistorian.date_line")
@@ -58,6 +61,15 @@ public class Messages {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    private static Component copyableText(String str) {
+        // Versions below 1.15 don't support copy event, gracefully degrade functionality
+        if (NameHistorianSpigot.MAJOR_SPIGOT_VERSION < COPY_EVENT_VERSION) {
+            return Component.text(str);
+        }
+        return Component.text(str)
+                .clickEvent(ClickEvent.copyToClipboard(str))
+                .hoverEvent(Component.translatable("namehistorian.click_to_copy").asHoverEvent());
+    }
     private static String format(Instant time) {
         return FORMATTER.format(time.atZone(ZoneOffset.systemDefault()));
     }

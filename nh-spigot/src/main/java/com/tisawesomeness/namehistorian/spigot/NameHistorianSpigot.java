@@ -7,6 +7,7 @@ import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -27,6 +28,13 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 public final class NameHistorianSpigot extends JavaPlugin {
+
+    /**
+     * The major version of the Minecraft server this plugin is running on.
+     * As an example, both "1.20" and "1.20.5" have major version 20.
+     * Defaults to 8 if the version could not be parsed.
+     */
+    public static final int MAJOR_SPIGOT_VERSION = BukkitUtil.parseVersion(Bukkit.getBukkitVersion()).orElse(8);
 
     private static final Component PREFIX = Component.join(JoinConfiguration.noSeparators(),
             Component.text("[").color(NamedTextColor.GRAY),
