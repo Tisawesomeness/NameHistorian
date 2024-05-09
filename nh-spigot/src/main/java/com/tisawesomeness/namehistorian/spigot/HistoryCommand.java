@@ -3,7 +3,6 @@ package com.tisawesomeness.namehistorian.spigot;
 import com.tisawesomeness.namehistorian.NameRecord;
 import com.tisawesomeness.namehistorian.util.Util;
 import lombok.AllArgsConstructor;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -47,38 +46,34 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
     }
 
     private void runWithUuid(CommandSender sender, UUID uuid) {
-        Optional<OfflinePlayer> playerOpt = plugin.getPlayer(uuid);
-        if (!playerOpt.isPresent()) {
-            plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
-            return;
-        }
-        OfflinePlayer player = playerOpt.get();
+        JoinStatus joinStatus = plugin.getPlayer(uuid)
+                .map(p -> p.isOnline() ? JoinStatus.ONLINE : JoinStatus.OFFLINE)
+                .orElse(JoinStatus.NEVER_JOINED);
         Optional<MojangAPI> apiOpt = plugin.getMojangAPI();
-        if (player.isOnline() || !apiOpt.isPresent()) {
-            JoinStatus joinStatus = player.isOnline() ? JoinStatus.ONLINE : JoinStatus.OFFLINE;
+        if (joinStatus == JoinStatus.ONLINE || !apiOpt.isPresent()) {
             fetchNameHistory(sender, uuid, joinStatus);
             return;
         }
         plugin.log("Fetching username for %s from Mojang API", uuid);
         plugin.sendMessage(sender, Messages.MOJANG_LOOKUP);
-        plugin.scheduleAsync(() -> lookupUsernameFromMojangAsync(sender, uuid, apiOpt.get()));
+        plugin.scheduleAsync(() -> lookupUsernameFromMojangAsync(sender, uuid, joinStatus, apiOpt.get()));
     }
-    private void lookupUsernameFromMojangAsync(CommandSender sender, UUID uuid, MojangAPI api) {
+    private void lookupUsernameFromMojangAsync(CommandSender sender, UUID uuid, JoinStatus joinStatus, MojangAPI api) {
         try {
             String username = api.getUsername(uuid).orElse(null);
-            plugin.scheduleNextTick(() -> processUsernameSync(sender, uuid, username));
+            plugin.scheduleNextTick(() -> processUsernameSync(sender, uuid, username, joinStatus));
         } catch (IOException ex) {
             plugin.err("Error fetching name history for %s", ex, uuid);
             plugin.scheduleNextTick(() -> plugin.sendMessage(sender, Messages.MOJANG_ERROR));
         }
     }
-    private void processUsernameSync(CommandSender sender, UUID uuid, @Nullable String username) {
+    private void processUsernameSync(CommandSender sender, UUID uuid, @Nullable String username, JoinStatus joinStatus) {
         if (username == null) {
             plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
             return;
         }
         tryRecordName(uuid, username);
-        fetchNameHistory(sender, uuid, JoinStatus.OFFLINE);
+        fetchNameHistory(sender, uuid, joinStatus);
     }
 
     private void runWithUsername(CommandSender sender, APICompatibleUsername username) {
