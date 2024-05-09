@@ -41,7 +41,7 @@ public final class Util {
     }
 
     /**
-     * Parses a UUID from string, with or without dashes
+     * Parses a UUID from string, with or without dashes, case-insensitive
      * @param str the input string
      * @return the UUID, or empty if the string could not be parsed
      */

@@ -7,17 +7,25 @@ import lombok.EqualsAndHashCode;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
+/**
+ * A username that is supported by both the Mojang API and modern Spigot servers.
+ */
 @EqualsAndHashCode
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class APICompatibleUsername implements CharSequence, Comparable<APICompatibleUsername> {
 
-    // Represents all usernames that are supported by both the Mojang API and modern servers.
-    // Modern servers restrict usernames to 16 or fewer characters and no spaces
-    // Mojang API allows some but not all invalid characters
     private static final Pattern MOJANG_SUPPORTED_PATTERN = Pattern.compile("^[\\w!@$\\-.?]{1,16}$");
 
     private final String name;
 
+    /**
+     * Creates a username, checking if the name is between 1-16 characters and does not contain characters that
+     * break the Mojang API. While "valid" usernames are a more restricted subset, "invalid" names such as "8"
+     * or "Din-ex" have existed before and work in the Mojang API. Other "invalid" names that have been registered,
+     * such as "Will Wall", break servers and therefore will return empty when passed to this method.
+     * @param name the username as a string
+     * @return the username, or empty if the string is not supported
+     */
     public static Optional<APICompatibleUsername> of(String name) {
         if (!MOJANG_SUPPORTED_PATTERN.matcher(name).matches()) {
             return Optional.empty();

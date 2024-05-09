@@ -77,7 +77,7 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
     }
 
     private void runWithUsername(CommandSender sender, APICompatibleUsername username) {
-        Optional<Player> playerOpt = plugin.getPlayer(username.toString());
+        Optional<Player> playerOpt = plugin.getOnlinePlayer(username.toString());
         if (playerOpt.isPresent()) {
             Player player = playerOpt.get();
             fetchNameHistory(sender, player.getUniqueId(), JoinStatus.ONLINE);

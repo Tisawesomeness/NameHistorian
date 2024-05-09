@@ -94,6 +94,9 @@ public final class NameHistorianSpigot extends JavaPlugin {
         }
     }
 
+    /**
+     * Reloads the config, translations, and Mojang API cache.
+     */
     public void reload() {
         reloadConfig();
         config = new NameHistorianConfig(this);
@@ -148,6 +151,11 @@ public final class NameHistorianSpigot extends JavaPlugin {
         return historian;
     }
 
+    /**
+     * Looks up a player that has joined this server. The player may be offlien.
+     * @param uuid the player's UUID
+     * @return the player, or empty if the player has never joined
+     */
     public Optional<OfflinePlayer> getPlayer(UUID uuid) {
         OfflinePlayer p = getServer().getOfflinePlayer(uuid);
         if (p.getLastPlayed() == 0) {
@@ -155,13 +163,26 @@ public final class NameHistorianSpigot extends JavaPlugin {
         }
         return Optional.of(p);
     }
-    public Optional<Player> getPlayer(String username) {
+    /**
+     * Looks up an online player.
+     * @param username the player's username
+     * @return the player, or empty if the player is offline or has never joined
+     */
+    public Optional<Player> getOnlinePlayer(String username) {
         return Optional.ofNullable(getServer().getPlayer(username));
     }
 
+    /**
+     * Schedules code that runs on the next tick. Can run Bukkit API calls.
+     * @param runnable the code to run
+     */
     public void scheduleNextTick(Runnable runnable) {
         getServer().getScheduler().runTask(this, runnable);
     }
+    /**
+     * Schedules codes that runs asynchronously. <strong>Do not run Bukkit API calls.</strong>
+     * @param runnable the code to run
+     */
     public void scheduleAsync(Runnable runnable) {
         getServer().getScheduler().runTaskAsynchronously(this, runnable);
     }
