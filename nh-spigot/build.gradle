@@ -16,6 +16,7 @@ repositories {
 
 dependencies {
     implementation(project(":nh-core")) {
+        // included in spigot
         exclude group: 'org.xerial', module: 'sqlite-jdbc'
     }
     compileOnly "org.spigotmc:spigot-api:1.13-R0.1-SNAPSHOT"
@@ -36,4 +37,12 @@ processResources {
 
 java {
     archivesBaseName = rootProject.name + "-Spigot"
+}
+
+shadowJar {
+    relocate 'com.tchristofferson.configupdater', 'com.tisawesomeness.namehistorian.libs.configupdater'
+    relocate 'nu.studer.java.util', 'com.tisawesomeness.namehistorian.libs.orderedproperties'
+    relocate 'net.kyori.adventure', 'com.tisawesomeness.namehistorian.libs.adventure'
+    relocate 'net.kyori.examination', 'com.tisawesomeness.namehistorian.libs.examination'
+    relocate 'net.kyori.option', 'com.tisawesomeness.namehistorian.libs.option'
 }
