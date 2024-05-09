@@ -85,28 +85,41 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
         }
         Optional<MojangAPI> apiOpt = plugin.getMojangAPI();
         if (!apiOpt.isPresent()) {
-            plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
+            lookupLatestByUsername(sender, username);
             return;
         }
         plugin.log("Fetching UUID for %s from Mojang API", username);
         plugin.sendMessage(sender, Messages.MOJANG_LOOKUP);
         plugin.scheduleAsync(() -> lookupUUIDFromMojangAsync(sender, username, apiOpt.get()));
     }
+    private void lookupLatestByUsername(CommandSender sender, APICompatibleUsername username) {
+        try {
+            UUID uuid = plugin.getHistorian().getLatestByUsername(username.toString())
+                    .map(NameRecord::getUuid)
+                    .orElse(null);
+            processUUIDSync(sender, username, uuid, false);
+        } catch (SQLException ex) {
+            plugin.err("Error fetching latest name for %s", ex, username);
+            plugin.sendMessage(sender, Messages.FETCH_ERROR);
+        }
+    }
     private void lookupUUIDFromMojangAsync(CommandSender sender, APICompatibleUsername username, MojangAPI api) {
         try {
             UUID uuid = api.getUUID(username).orElse(null);
-            plugin.scheduleNextTick(() -> processUUIDSync(sender, username, uuid));
+            plugin.scheduleNextTick(() -> processUUIDSync(sender, username, uuid, true));
         } catch (IOException ex) {
             plugin.err("Error fetching name history for %s", ex, username);
             plugin.scheduleNextTick(() -> plugin.sendMessage(sender, Messages.MOJANG_ERROR));
         }
     }
-    private void processUUIDSync(CommandSender sender, APICompatibleUsername username, @Nullable UUID uuid) {
+    private void processUUIDSync(CommandSender sender, APICompatibleUsername username, @Nullable UUID uuid, boolean shouldRecord) {
         if (uuid == null) {
             plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
             return;
         }
-        tryRecordName(uuid, username.toString());
+        if (shouldRecord) {
+            tryRecordName(uuid, username.toString());
+        }
         boolean hasJoined = plugin.getPlayer(uuid).isPresent();
         JoinStatus joinStatus = hasJoined ? JoinStatus.OFFLINE : JoinStatus.NEVER_JOINED;
         fetchNameHistory(sender, uuid, joinStatus);

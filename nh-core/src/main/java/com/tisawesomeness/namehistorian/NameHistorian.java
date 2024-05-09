@@ -9,10 +9,7 @@ import javax.sql.DataSource;
 import java.nio.file.Path;
 import java.sql.*;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public final class NameHistorian {
@@ -26,10 +23,16 @@ public final class NameHistorian {
             "FROM `name_history`\n" +
             "WHERE `uuid` = ?\n" +
             "ORDER BY `first_seen_time` DESC, `last_seen_time` DESC;";
-    private static final String READ_LATEST_SQL = "" +
+    private static final String READ_LATEST_UUID_SQL = "" +
             "SELECT `id`, `username`, `first_seen_time`, `detected_time`, `last_seen_time`\n" +
             "FROM `name_history`\n" +
             "WHERE `uuid` = ?\n" +
+            "ORDER BY `first_seen_time` DESC\n" +
+            "LIMIT 1;";
+    private static final String READ_LATEST_USERNAME_SQL = "" +
+            "SELECT `id`, `uuid`, `first_seen_time`, `detected_time`, `last_seen_time`\n" +
+            "FROM `name_history`\n" +
+            "WHERE `username` = ?\n" +
             "ORDER BY `first_seen_time` DESC\n" +
             "LIMIT 1;";
     private static final String UPDATE_LAST_SEEN_SQL = "" +
@@ -138,11 +141,20 @@ public final class NameHistorian {
     }
 
     private static @Nullable NameDBRecord findNameRecord(Connection con, UUID uuid) throws SQLException {
-        @Cleanup PreparedStatement st = con.prepareStatement(READ_LATEST_SQL);
+        @Cleanup PreparedStatement st = con.prepareStatement(READ_LATEST_UUID_SQL);
         st.setString(1, uuid.toString());
         @Cleanup ResultSet rs = st.executeQuery();
         if (rs.next()) {
             return readDBRecord(rs, uuid);
+        }
+        return null;
+    }
+    private static @Nullable NameDBRecord findNameRecord(Connection con, String username) throws SQLException {
+        @Cleanup PreparedStatement st = con.prepareStatement(READ_LATEST_USERNAME_SQL);
+        st.setString(1, username);
+        @Cleanup ResultSet rs = st.executeQuery();
+        if (rs.next()) {
+            return readDBRecord(rs, username);
         }
         return null;
     }
@@ -183,11 +195,32 @@ public final class NameHistorian {
         return list;
     }
 
+    /**
+     * Gets the most recent name record containing the given username.
+     * @param username the username
+     * @return the name record, or empty if the username has never been seen
+     * @throws SQLException on database error
+     */
+    public Optional<NameRecord> getLatestByUsername(String username) throws SQLException {
+        @Cleanup Connection con = source.getConnection();
+        return Optional.ofNullable(findNameRecord(con, username)).map(NameDBRecord::toNameRecord);
+    }
+
     private static NameDBRecord readDBRecord(ResultSet rs, UUID uuid) throws SQLException {
         return new NameDBRecord(
                 rs.getInt("id"),
                 uuid.toString(),
                 rs.getString("username"),
+                rs.getLong("first_seen_time"),
+                readNullableLong(rs, "detected_time"),
+                rs.getLong("last_seen_time")
+        );
+    }
+    private static NameDBRecord readDBRecord(ResultSet rs, String username) throws SQLException {
+        return new NameDBRecord(
+                rs.getInt("id"),
+                rs.getString("uuid"),
+                username,
                 rs.getLong("first_seen_time"),
                 readNullableLong(rs, "detected_time"),
                 rs.getLong("last_seen_time")
