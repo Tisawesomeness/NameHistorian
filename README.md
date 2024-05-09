@@ -1,6 +1,6 @@
 # NameHistorian
 
-Records and displays player name changes.
+Records and displays player name changes over time.
 
 ![Screenshot of /history command](docs/demo.png)
 
@@ -10,7 +10,7 @@ Records and displays player name changes.
 
 ### `/history <player>`
 
-Displays the name history of a player.
+Looks up and displays the name history of a player. Supports both usernames and UUIDs. If the player is offline, also requests their current profile from the Mojang servers and saves it.
 
 **Permission:** `namehistorian.history` (default: op)
 

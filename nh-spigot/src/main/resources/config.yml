@@ -1,14 +1,16 @@
-# Whether messages will be translated into the language the player's game is set to.
-# Commands run from the console will be translated into the host's locale.
+# Whether to translate messages into the player's language.
+# The player's language is their **Minecraft client's language setting**.
+# (Commands run from the console will be translated into the host machine's locale.)
 # If false, all messages will be translated into the default locale.
+# To add new languages, see the plugin's description: https://github.com/Tisawesomeness/NameHistorian
 per-user-translations: true
 # The default locale/language of the plugin.
-# If per-user-translations is false or the user does not have a supported locale, this locale will be used.
+# If `per-user-translations` is false or the user does not have a supported locale, the user will see this locale.
 # A list of locales is at https://www.localeplanet.com/java/
 default-locale: "en"
-# Whether to look up offline players' UUIDs from Mojang servers.
-# When requesting the name history of an offline player by username, the plugin requests the player's current UUID
-# from Mojang servers (since the UUID the username belongs to could have changed since the player last joined).
+# Whether to look up usernames and UUIDs from Mojang servers.
+# This allows looking up any player's name history, not just those who have joined the server.
+# Any results are saved to the database.
 enable-mojang-lookups: true
 # The time in milliseconds to wait for a response from Mojang servers before giving up.
 # 0 or less means no timeout.
