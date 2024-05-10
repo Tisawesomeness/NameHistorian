@@ -64,15 +64,19 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
             plugin.scheduleNextTick(() -> processUsernameSync(sender, uuid, username, joinStatus));
         } catch (IOException ex) {
             plugin.err("Error fetching name history for %s", ex, uuid);
-            plugin.scheduleNextTick(() -> plugin.sendMessage(sender, Messages.MOJANG_ERROR));
+            plugin.scheduleNextTick(() -> processUsernameErrorSync(sender, uuid, joinStatus));
         }
     }
     private void processUsernameSync(CommandSender sender, UUID uuid, @Nullable String username, JoinStatus joinStatus) {
-        if (username == null) {
-            plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
-            return;
+        if (username != null) {
+            tryRecordName(uuid, username);
+        } else {
+            plugin.sendMessage(sender, Messages.MOJANG_UNKNOWN);
         }
-        tryRecordName(uuid, username);
+        fetchNameHistory(sender, uuid, joinStatus);
+    }
+    private void processUsernameErrorSync(CommandSender sender, UUID uuid, JoinStatus joinStatus) {
+        plugin.sendMessage(sender, Messages.MOJANG_ERROR);
         fetchNameHistory(sender, uuid, joinStatus);
     }
 
@@ -90,29 +94,41 @@ public final class HistoryCommand implements CommandExecutor, TabCompleter {
         }
         plugin.log("Fetching UUID for %s from Mojang API", username);
         plugin.sendMessage(sender, Messages.MOJANG_LOOKUP);
-        plugin.scheduleAsync(() -> lookupUUIDFromMojangAsync(sender, username, apiOpt.get()));
+        plugin.scheduleAsync(() -> lookupUuidFromMojangAsync(sender, username, apiOpt.get()));
+    }
+    private void lookupUuidFromMojangAsync(CommandSender sender, APICompatibleUsername username, MojangAPI api) {
+        try {
+            UUID uuid = api.getUUID(username).orElse(null);
+            plugin.scheduleNextTick(() -> processUuidLookupSync(sender, username, uuid));
+        } catch (IOException ex) {
+            plugin.err("Error fetching name history for %s", ex, username);
+            plugin.scheduleNextTick(() -> processUuidLookupErrorSync(sender, username));
+        }
+    }
+    private void processUuidLookupSync(CommandSender sender, APICompatibleUsername username, @Nullable UUID uuid) {
+        if (uuid == null) {
+            plugin.sendMessage(sender, Messages.MOJANG_UNKNOWN);
+            lookupLatestByUsername(sender, username);
+            return;
+        }
+        processUuidSync(sender, username, uuid, true);
+    }
+    private void processUuidLookupErrorSync(CommandSender sender, APICompatibleUsername username) {
+        plugin.sendMessage(sender, Messages.MOJANG_ERROR);
+        lookupLatestByUsername(sender, username);
     }
     private void lookupLatestByUsername(CommandSender sender, APICompatibleUsername username) {
         try {
             UUID uuid = plugin.getHistorian().getLatestByUsername(username.toString())
                     .map(NameRecord::getUuid)
                     .orElse(null);
-            processUUIDSync(sender, username, uuid, false);
+            processUuidSync(sender, username, uuid, false);
         } catch (SQLException ex) {
             plugin.err("Error fetching latest name for %s", ex, username);
             plugin.sendMessage(sender, Messages.FETCH_ERROR);
         }
     }
-    private void lookupUUIDFromMojangAsync(CommandSender sender, APICompatibleUsername username, MojangAPI api) {
-        try {
-            UUID uuid = api.getUUID(username).orElse(null);
-            plugin.scheduleNextTick(() -> processUUIDSync(sender, username, uuid, true));
-        } catch (IOException ex) {
-            plugin.err("Error fetching name history for %s", ex, username);
-            plugin.scheduleNextTick(() -> plugin.sendMessage(sender, Messages.MOJANG_ERROR));
-        }
-    }
-    private void processUUIDSync(CommandSender sender, APICompatibleUsername username, @Nullable UUID uuid, boolean shouldRecord) {
+    private void processUuidSync(CommandSender sender, APICompatibleUsername username, @Nullable UUID uuid, boolean shouldRecord) {
         if (uuid == null) {
             plugin.sendMessage(sender, Messages.UNKNOWN_PLAYER);
             return;

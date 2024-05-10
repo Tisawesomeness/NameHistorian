@@ -27,8 +27,10 @@ public class Messages {
             .color(NamedTextColor.RED);
     public static final Component MOJANG_LOOKUP = Component.translatable("namehistorian.mojang_lookup")
             .color(NamedTextColor.GRAY);
+    public static final Component MOJANG_UNKNOWN = Component.translatable("namehistorian.mojang_unknown")
+            .color(NamedTextColor.GRAY);
     public static final Component MOJANG_ERROR = Component.translatable("namehistorian.mojang_error")
-            .color(NamedTextColor.RED);
+            .color(NamedTextColor.GRAY);
     public static final Component NO_HISTORY = Component.translatable("namehistorian.no_history")
             .color(NamedTextColor.RED);
     /** uuid */
