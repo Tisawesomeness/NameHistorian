@@ -20,7 +20,7 @@ public class NameHistorianConfig {
     public NameHistorianConfig(NameHistorianSpigot plugin) {
         FileConfiguration conf = plugin.getConfig();
         perUserTranslations = conf.getBoolean("per-user-translations", false);
-        defaultLocale = parseLocale(plugin).orElse(TranslationManager.PLUGIN_DEFAULT);
+        defaultLocale = parseLocale(plugin).orElse(BaseLocale.DEFAULT.getLocale());
         enableMojangLookups = conf.getBoolean("enable-mojang-lookups", true);
         mojangTimeout = Math.max(0, conf.getInt("mojang-timeout", 5000));
     }
@@ -32,7 +32,7 @@ public class NameHistorianConfig {
         }
         Locale locale = Translator.parseLocale(localeStr);
         if (locale == null) {
-            plugin.err("Unknown default-locale %s, using %s instead", localeStr, TranslationManager.PLUGIN_DEFAULT);
+            plugin.err("Unknown default-locale %s, using %s instead", localeStr, BaseLocale.DEFAULT);
             return Optional.empty();
         }
         return Optional.of(locale);

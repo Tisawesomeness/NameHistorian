@@ -12,10 +12,7 @@ import net.kyori.adventure.util.UTF8ResourceBundleControl;
 import nu.studer.java.util.OrderedProperties;
 
 import javax.annotation.Nullable;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.Writer;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,8 +23,6 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public class TranslationManager {
 
-    public static final Locale PLUGIN_DEFAULT = Locale.ENGLISH;
-
     private final NameHistorianSpigot plugin;
     // Null until first loadTranslations()
     private @Nullable RegistryAdapter currentRegistry;
@@ -36,7 +31,13 @@ public class TranslationManager {
         Path translationsDirectory = tryCreateTranslationsDirectory();
         if (translationsDirectory != null) {
             try {
-                writeTranslationsFromJar(translationsDirectory);
+                updateTranslationFiles(translationsDirectory);
+            } catch (IOException ex) {
+                plugin.err("Could not update translation files", ex);
+                // Non-fatal
+            }
+            try {
+                writeDefaultTranslationFile(translationsDirectory);
             } catch (IOException ex) {
                 plugin.err("Could not write default translations file", ex);
                 // Non-fatal
@@ -56,25 +57,38 @@ public class TranslationManager {
         }
     }
 
-    private void writeTranslationsFromJar(Path translationsDirectory) throws IOException {
-        Path translationsFile = translationsDirectory.resolve("en.properties");
-        @Cleanup InputStream jarInputStream = plugin.getResource("lang/namehistorian_en.properties");
-        if (jarInputStream == null) {
-            throw new AssertionError("Some classloader trickery is going on");
+    private void updateTranslationFiles(Path translationsDirectory) throws IOException {
+        @Cleanup Stream<Path> translationFiles = Files.list(translationsDirectory);
+        translationFiles.forEach(this::updateTranslationFile);
+    }
+    private void updateTranslationFile(Path translationFile) {
+        String fileName = translationFile.getFileName().toString();
+        String resourceName = "lang/namehistorian_" + fileName;
+        try (InputStream jarInputStream = plugin.getResource(resourceName)) {
+            if (jarInputStream == null) {
+                return;
+            }
+            tryFillMissingKeys(jarInputStream, translationFile);
+        } catch (IOException ignore) {
+            // only occurs on close(), very rare
         }
-        if (Files.exists(translationsFile)) {
-            fillMissingKeys(jarInputStream, translationsFile);
-        } else {
-            Files.copy(jarInputStream, translationsFile);
+    }
+    private void tryFillMissingKeys(InputStream jarInputStream, Path translationFile) {
+        try {
+            fillMissingKeys(jarInputStream, translationFile);
+        } catch (IOException ex) {
+            plugin.err("Could not update translation file %s", ex, translationFile.getFileName());
         }
     }
     private static void fillMissingKeys(InputStream jarInputStream, Path translationsFile) throws IOException {
+        // Must always use readers or writers with UTF-8, or we'll get nasty encoding errors
         OrderedProperties jarProperties = dateSuppressingProperties();
-        jarProperties.load(jarInputStream);
+        Reader jarInputReader = new InputStreamReader(jarInputStream, StandardCharsets.UTF_8);
+        jarProperties.load(jarInputReader);
 
         OrderedProperties fileProperties = dateSuppressingProperties();
-        @Cleanup InputStream fileInputStream = Files.newInputStream(translationsFile);
-        fileProperties.load(fileInputStream);
+        @Cleanup Reader fileInputReader = Files.newBufferedReader(translationsFile, StandardCharsets.UTF_8);
+        fileProperties.load(fileInputReader);
 
         // Takes default translations and replaces them with any modifications from the custom folder
         // Effectively the same as adding missing keys to the custom translations file
@@ -82,7 +96,7 @@ public class TranslationManager {
             jarProperties.setProperty(fileProperty.getKey(), fileProperty.getValue());
         }
 
-        @Cleanup Writer fileOutputWriter = Files.newBufferedWriter(translationsFile);
+        @Cleanup Writer fileOutputWriter = Files.newBufferedWriter(translationsFile, StandardCharsets.UTF_8);
         jarProperties.store(fileOutputWriter, null);
     }
     private static OrderedProperties dateSuppressingProperties() {
@@ -91,13 +105,24 @@ public class TranslationManager {
                 .build();
     }
 
+    private void writeDefaultTranslationFile(Path translationsDirectory) throws IOException {
+        Path translationsFile = translationsDirectory.resolve("en.properties");
+        if (!Files.exists(translationsFile)) {
+            @Cleanup InputStream jarInputStream = plugin.getResource("lang/namehistorian_en.properties");
+            assert jarInputStream != null;
+            Files.copy(jarInputStream, translationsFile);
+        }
+    }
+
     private void loadTranslations(NameHistorianConfig config, @Nullable Path translationsDirectory) {
         RegistryAdapter newRegistry = new RegistryAdapter();
         newRegistry.setDefaultLocale(config.getDefaultLocale());
 
         boolean anyLanguageRegistered = tryRegisterFromDirectory(config, translationsDirectory, newRegistry);
-        if (config.isPerUserTranslations() || !anyLanguageRegistered) {
-            registerFromJar(newRegistry);
+        if (config.isPerUserTranslations()) {
+            registerAllFromJar(newRegistry);
+        } else if (!anyLanguageRegistered) {
+            registerFromJar(newRegistry, BaseLocale.DEFAULT);
         }
 
         if (currentRegistry != null) {
@@ -129,14 +154,14 @@ public class TranslationManager {
         if (registerFile(registry, defaultTranslationFile)) {
             return true;
         }
-        plugin.warn("Default translation file could not be loaded, using %s locale instead", PLUGIN_DEFAULT);
+        plugin.warn("Default translation file could not be loaded, using %s locale instead", BaseLocale.DEFAULT);
 
-        String pluginDefaultTranslationFileName = PLUGIN_DEFAULT.getLanguage() + ".properties";
+        String pluginDefaultTranslationFileName = BaseLocale.DEFAULT + ".properties";
         Path pluginDefaultTranslationFile = translationsDirectory.resolve(pluginDefaultTranslationFileName);
         if (registerFile(registry, pluginDefaultTranslationFile)) {
             return true;
         }
-        plugin.warn("%s.properties translation file could not be loaded, loading from jar instead", PLUGIN_DEFAULT);
+        plugin.warn("%s.properties translation file could not be loaded, loading from jar instead", BaseLocale.DEFAULT);
         return false;
     }
 
@@ -164,7 +189,7 @@ public class TranslationManager {
         try {
             return readBundle(translationFile);
         } catch (IOException ex) {
-            plugin.err("Failed to read translation file %s", ex, translationFile);
+            plugin.err("Failed to read translation file %s", ex, translationFile.getFileName());
             return Optional.empty();
         }
     }
@@ -185,9 +210,13 @@ public class TranslationManager {
         return Optional.of(Tuple.of(locale, new PropertyResourceBundle(reader)));
     }
 
-    private static void registerFromJar(RegistryAdapter registry) {
-        ResourceBundle bundle = ResourceBundle.getBundle("lang/namehistorian", PLUGIN_DEFAULT, UTF8ResourceBundleControl.get());
-        registry.registerMissingKeys(PLUGIN_DEFAULT, bundle);
+    private static void registerAllFromJar(RegistryAdapter registry) {
+        Arrays.stream(BaseLocale.values()).forEach(bl -> registerFromJar(registry, bl));
+    }
+    private static void registerFromJar(RegistryAdapter registry, BaseLocale baseLocale) {
+        Locale locale = baseLocale.getLocale();
+        ResourceBundle bundle = ResourceBundle.getBundle("lang/namehistorian", locale, UTF8ResourceBundleControl.get());
+        registry.registerMissingKeys(locale, bundle);
     }
 
     private static class RegistryAdapter {
@@ -210,7 +239,7 @@ public class TranslationManager {
         }
         private boolean registerLanguageOnlyLocaleIfExists(Locale locale, ResourceBundle bundle) {
             Locale languageOnlyLocale = new Locale(locale.getLanguage());
-            if (languageOnlyLocale.equals(locale) || languageOnlyLocale.equals(PLUGIN_DEFAULT)) {
+            if (languageOnlyLocale.equals(locale) || languageOnlyLocale.equals(BaseLocale.DEFAULT.getLocale())) {
                 return false;
             }
             return tryRegister(locale, bundle);
