@@ -2,6 +2,7 @@ package com.tisawesomeness.namehistorian.spigot;
 
 import lombok.Getter;
 
+import java.util.Arrays;
 import java.util.Locale;
 
 public enum BaseLocale {
@@ -14,6 +15,12 @@ public enum BaseLocale {
 
     BaseLocale(String languageCode) {
         locale = new Locale(languageCode);
+    }
+
+    public static boolean isBaseLocale(Locale locale) {
+        return Arrays.stream(values())
+                .map(BaseLocale::getLocale)
+                .anyMatch(l -> l.equals(locale));
     }
 
     @Override

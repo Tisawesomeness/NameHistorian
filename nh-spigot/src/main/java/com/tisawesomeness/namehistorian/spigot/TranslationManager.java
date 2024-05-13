@@ -16,7 +16,6 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.MessageFormat;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -119,8 +118,10 @@ public class TranslationManager {
         newRegistry.setDefaultLocale(config.getDefaultLocale());
 
         boolean anyLanguageRegistered = tryRegisterFromDirectory(config, translationsDirectory, newRegistry);
+        // If per-user-translations enabled, there may be languages in jar that are not in file
         if (config.isPerUserTranslations()) {
             registerAllFromJar(newRegistry);
+        // If per-user-translations disabled, only need to fallback to jar if the default wasn't registered earlier
         } else if (!anyLanguageRegistered) {
             registerFromJar(newRegistry, BaseLocale.DEFAULT);
         }
@@ -154,7 +155,13 @@ public class TranslationManager {
         if (registerFile(registry, defaultTranslationFile)) {
             return true;
         }
-        plugin.warn("Default translation file could not be loaded, using %s locale instead", BaseLocale.DEFAULT);
+        if (BaseLocale.isBaseLocale(config.getDefaultLocale())) {
+            plugin.log("Default translation file %s could not be loaded, loading from jar instead",
+                    defaultTranslationFileName, BaseLocale.DEFAULT);
+            return false;
+        }
+        plugin.warn("Default translation file %s could not be loaded, using %s locale instead",
+                defaultTranslationFileName, BaseLocale.DEFAULT);
 
         String pluginDefaultTranslationFileName = BaseLocale.DEFAULT + ".properties";
         Path pluginDefaultTranslationFile = translationsDirectory.resolve(pluginDefaultTranslationFileName);
@@ -216,7 +223,7 @@ public class TranslationManager {
     private static void registerFromJar(RegistryAdapter registry, BaseLocale baseLocale) {
         Locale locale = baseLocale.getLocale();
         ResourceBundle bundle = ResourceBundle.getBundle("lang/namehistorian", locale, UTF8ResourceBundleControl.get());
-        registry.registerMissingKeys(locale, bundle);
+        registry.tryRegister(locale, bundle);
     }
 
     private static class RegistryAdapter {
@@ -255,13 +262,6 @@ public class TranslationManager {
             }
             registeredLocales.add(locale);
             return true;
-        }
-
-        private void registerMissingKeys(Locale locale, ResourceBundle bundle) {
-            registeredLocales.add(locale);
-            bundle.keySet().stream()
-                    .filter(k -> !registry.contains(k))
-                    .forEach(k -> registry.register(k, locale, new MessageFormat(bundle.getString(k))));
         }
 
     }
