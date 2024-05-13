@@ -80,7 +80,7 @@ public final class NameHistorianSpigot extends JavaPlugin {
         translationManager.init(config);
 
         if (config.isEnableMojangLookups()) {
-            mojangAPI = new MojangAPI(config.getMojangTimeout());
+            mojangAPI = new MojangAPI(config.getMojangTimeout(), config.getMojangLifetime());
         }
 
         Path dbPath = dataPath.resolve("history.db");
@@ -112,7 +112,7 @@ public final class NameHistorianSpigot extends JavaPlugin {
             translationManager.init(config);
         }
         if (config.isEnableMojangLookups()) {
-            mojangAPI = new MojangAPI(config.getMojangTimeout());
+            mojangAPI = new MojangAPI(config.getMojangTimeout(), config.getMojangLifetime());
         } else {
             mojangAPI = null;
         }

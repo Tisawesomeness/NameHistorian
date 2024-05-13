@@ -8,6 +8,7 @@ import com.google.gson.JsonSyntaxException;
 import com.tisawesomeness.namehistorian.util.ThrowingFunction;
 import com.tisawesomeness.namehistorian.util.Util;
 import lombok.Value;
+import org.jetbrains.annotations.Range;
 
 import javax.annotation.Nonnegative;
 import java.io.IOException;
@@ -29,13 +30,13 @@ public class MojangAPI {
     @Nonnegative
     private final int timeout;
 
-    public MojangAPI(@Nonnegative int timeout) {
+    public MojangAPI(@Nonnegative int timeout, @Range(from = 60, to = Integer.MAX_VALUE) int lifetime) {
         this.timeout = timeout;
         uuidLookupCache = CacheBuilder.newBuilder()
-                .expireAfterWrite(1, TimeUnit.MINUTES)
+                .expireAfterWrite(lifetime, TimeUnit.SECONDS)
                 .build(loader(this::lookupUUID));
         usernameLookupCache = CacheBuilder.newBuilder()
-                .expireAfterWrite(1, TimeUnit.MINUTES)
+                .expireAfterWrite(lifetime, TimeUnit.SECONDS)
                 .build(loader(this::lookupUsername));
     }
     private static <K, V> CacheLoader<K, V> loader(ThrowingFunction<K, V> func) {

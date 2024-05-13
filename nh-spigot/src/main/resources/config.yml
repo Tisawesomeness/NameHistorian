@@ -15,3 +15,6 @@ enable-mojang-lookups: true
 # The time in milliseconds to wait for a response from Mojang servers before giving up.
 # 0 or less means no timeout.
 mojang-timeout: 5000
+# The time in seconds a Mojang profile lookup is cached for.
+# 60 seconds is the minimum cache time due to rate-limiting.
+mojang-lifetime: 60

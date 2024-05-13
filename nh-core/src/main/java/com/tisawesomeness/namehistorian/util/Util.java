@@ -27,6 +27,17 @@ public final class Util {
     }
 
     /**
+     * Returns the first argument if non-null, else the second argument.
+     * @param nullable A nullable value
+     * @param defaultObj The value to use if the first argument is null
+     * @return the first argument if non-null, else the second argument
+     * @param <T> the type of the value
+     */
+    public static <T> T nullOr(@Nullable T nullable, T defaultObj) {
+        return nullable == null ? defaultObj : nullable;
+    }
+
+    /**
      * Checks if a string contains only whitespace
      * @param str the string
      * @return true if the string contains only whitespace
