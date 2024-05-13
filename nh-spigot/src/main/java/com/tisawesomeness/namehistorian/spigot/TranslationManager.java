@@ -5,11 +5,14 @@ import lombok.Cleanup;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.key.Key;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.translation.GlobalTranslator;
 import net.kyori.adventure.translation.TranslationRegistry;
 import net.kyori.adventure.translation.Translator;
 import net.kyori.adventure.util.UTF8ResourceBundleControl;
 import nu.studer.java.util.OrderedProperties;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 import javax.annotation.Nullable;
 import java.io.*;
@@ -22,11 +25,23 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public class TranslationManager {
 
+    private static final int LOCALE_METHOD_CHANGE_VERSION = 12;
+
     private final NameHistorianSpigot plugin;
     // Null until first loadTranslations()
     private @Nullable RegistryAdapter currentRegistry;
 
-    public void init(NameHistorianConfig config) {
+    /**
+     * Initializes the translation manager by:
+     * <ul>
+     *     <li>Creating the translations directory</li>
+     *     <li>Updating existing translation files by filling in missing keys</li>
+     *     <li>Writing the default translation file if it doesn't exist</li>
+     *     <li>Loading translations from file (and from jar if necessary) into the plugin</li>
+     * </ul>
+     * @throws IllegalStateException if the plugin is not initialized with a config
+     */
+    public void init() {
         Path translationsDirectory = tryCreateTranslationsDirectory();
         if (translationsDirectory != null) {
             try {
@@ -36,13 +51,13 @@ public class TranslationManager {
                 // Non-fatal
             }
             try {
-                writeDefaultTranslationFile(translationsDirectory);
+                writeDefaultTranslationFileIfNotExists(translationsDirectory);
             } catch (IOException ex) {
                 plugin.err("Could not write default translations file", ex);
                 // Non-fatal
             }
         }
-        loadTranslations(config, translationsDirectory);
+        loadTranslations(translationsDirectory);
     }
 
     private @Nullable Path tryCreateTranslationsDirectory() {
@@ -104,7 +119,7 @@ public class TranslationManager {
                 .build();
     }
 
-    private void writeDefaultTranslationFile(Path translationsDirectory) throws IOException {
+    private void writeDefaultTranslationFileIfNotExists(Path translationsDirectory) throws IOException {
         Path translationsFile = translationsDirectory.resolve("en.properties");
         if (!Files.exists(translationsFile)) {
             @Cleanup InputStream jarInputStream = plugin.getResource("lang/namehistorian_en.properties");
@@ -113,11 +128,12 @@ public class TranslationManager {
         }
     }
 
-    private void loadTranslations(NameHistorianConfig config, @Nullable Path translationsDirectory) {
+    private void loadTranslations(@Nullable Path translationsDirectory) {
+        NameHistorianConfig config = plugin.getNHConfig();
         RegistryAdapter newRegistry = new RegistryAdapter();
         newRegistry.setDefaultLocale(config.getDefaultLocale());
 
-        boolean anyLanguageRegistered = tryRegisterFromDirectory(config, translationsDirectory, newRegistry);
+        boolean anyLanguageRegistered = tryRegisterFromDirectory(translationsDirectory, newRegistry);
         // If per-user-translations enabled, there may be languages in jar that are not in file
         if (config.isPerUserTranslations()) {
             registerAllFromJar(newRegistry);
@@ -133,19 +149,19 @@ public class TranslationManager {
         GlobalTranslator.translator().addSource(newRegistry.getRegistry());
     }
 
-    private boolean tryRegisterFromDirectory(NameHistorianConfig config, @Nullable Path translationsDirectory,
-                RegistryAdapter registry) {
+    private boolean tryRegisterFromDirectory(@Nullable Path translationsDirectory, RegistryAdapter registry) {
         if (translationsDirectory == null) {
             return false;
         }
         try {
-            return registerFromDirectory(config, translationsDirectory, registry);
+            return registerFromDirectory(translationsDirectory, registry);
         } catch (IOException ex) {
             plugin.err("Failed to read translations from plugin directory", ex);
             return false;
         }
     }
-    private boolean registerFromDirectory(NameHistorianConfig config, Path translationsDirectory, RegistryAdapter registry) throws IOException {
+    private boolean registerFromDirectory(Path translationsDirectory, RegistryAdapter registry) throws IOException {
+        NameHistorianConfig config = plugin.getNHConfig();
         if (config.isPerUserTranslations()) {
             return registerAllFromDirectory(registry, translationsDirectory);
         }
@@ -224,6 +240,39 @@ public class TranslationManager {
         Locale locale = baseLocale.getLocale();
         ResourceBundle bundle = ResourceBundle.getBundle("lang/namehistorian", locale, UTF8ResourceBundleControl.get());
         registry.tryRegister(locale, bundle);
+    }
+
+    /**
+     * Translates the input component using the target's locale.
+     * First the full locale is used, then the locale with language only, then the default locale.
+     * If the target is a player, the player's locale is used, otherwise the locale is the default locale.
+     * Note that if per-player-translations is disabled, only one locale will be registered so all translations
+     * will be in that language.
+     * @param target the target the message will be sent to
+     * @param msg the input component
+     * @return the translated component
+     */
+    public Component render(CommandSender target, Component msg) {
+        return GlobalTranslator.render(msg, getLocale(target));
+    }
+    private Locale getLocale(CommandSender sendTo) {
+        if (sendTo instanceof Player) {
+            String localeStr = getLocale((Player) sendTo);
+            Locale locale = Translator.parseLocale(localeStr);
+            if (locale != null) {
+                return locale;
+            }
+        }
+        return plugin.getNHConfig().getDefaultLocale();
+    }
+    private static String getLocale(Player player) {
+        if (NameHistorianSpigot.MAJOR_SPIGOT_VERSION < LOCALE_METHOD_CHANGE_VERSION) {
+            @SuppressWarnings("deprecation") // not deprecated in old versions
+            String locale = player.spigot().getLocale();
+            return locale;
+        } else {
+            return player.getLocale();
+        }
     }
 
     private static class RegistryAdapter {

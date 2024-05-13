@@ -77,7 +77,7 @@ public final class NameHistorianSpigot extends JavaPlugin {
         }
         translationManager = new TranslationManager(this);
         assert config != null;
-        translationManager.init(config);
+        translationManager.init();
 
         if (config.isEnableMojangLookups()) {
             mojangAPI = new MojangAPI(config.getMojangTimeout(), config.getMojangLifetime());
@@ -109,7 +109,7 @@ public final class NameHistorianSpigot extends JavaPlugin {
         reloadConfig();
         config = new NameHistorianConfig(this);
         if (translationManager != null) {
-            translationManager.init(config);
+            translationManager.init();
         }
         if (config.isEnableMojangLookups()) {
             mojangAPI = new MojangAPI(config.getMojangTimeout(), config.getMojangLifetime());
@@ -143,11 +143,23 @@ public final class NameHistorianSpigot extends JavaPlugin {
         return new NamedPlayer(player.getUniqueId(), player.getName());
     }
 
-    public BukkitAudiences getAdventure() {
+    private BukkitAudiences getAdventure() {
         if (adventure == null) {
             throw new IllegalStateException("Tried to get adventure instance before plugin enabled");
         }
         return adventure;
+    }
+    public NameHistorianConfig getNHConfig() {
+        if (config == null) {
+            throw new IllegalStateException("Tried to get config before plugin enabled");
+        }
+        return config;
+    }
+    private TranslationManager getTranslationManager() {
+        if (translationManager == null) {
+            throw new IllegalStateException("Tried to get translation manager before plugin enabled");
+        }
+        return translationManager;
     }
     public Optional<MojangAPI> getMojangAPI() {
         return Optional.ofNullable(mojangAPI);
@@ -196,7 +208,8 @@ public final class NameHistorianSpigot extends JavaPlugin {
     }
 
     public void sendMessage(CommandSender sendTo, Component msg) {
-        getAdventure().sender(sendTo).sendMessage(PREFIX.append(msg));
+        Component rendered = PREFIX.append(getTranslationManager().render(sendTo, msg));
+        getAdventure().sender(sendTo).sendMessage(rendered);
     }
     public <A0> void sendMessage(CommandSender sendTo, Messages.A1<A0> msg, A0 a0) {
         sendMessage(sendTo, msg.build(a0));

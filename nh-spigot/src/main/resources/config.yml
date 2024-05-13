@@ -1,6 +1,6 @@
 # Whether to translate messages into the player's language.
 # The player's language is their **Minecraft client's language setting**.
-# (Commands run from the console will be translated into the host machine's locale.)
+# (Commands run from the console will be translated into the default locale.)
 # If false, all messages will be translated into the default locale.
 # To add new languages, see the plugin's description: https://github.com/Tisawesomeness/NameHistorian
 per-user-translations: true
