@@ -139,7 +139,8 @@ public class TranslationManager {
             registerAllFromJar(newRegistry);
         // If per-user-translations disabled, only need to fallback to jar if the default wasn't registered earlier
         } else if (!anyLanguageRegistered) {
-            registerFromJar(newRegistry, BaseLocale.DEFAULT);
+            BaseLocale fallback = BaseLocale.of(config.getDefaultLocale()).orElse(BaseLocale.DEFAULT);
+            registerFromJar(newRegistry, fallback);
         }
 
         if (currentRegistry != null) {
@@ -173,7 +174,7 @@ public class TranslationManager {
         }
         if (BaseLocale.isBaseLocale(config.getDefaultLocale())) {
             plugin.log("Default translation file %s could not be loaded, loading from jar instead",
-                    defaultTranslationFileName, BaseLocale.DEFAULT);
+                    defaultTranslationFileName);
             return false;
         }
         plugin.warn("Default translation file %s could not be loaded, using %s locale instead",
