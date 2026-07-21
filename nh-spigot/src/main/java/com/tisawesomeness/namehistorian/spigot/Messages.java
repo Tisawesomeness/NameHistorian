@@ -11,7 +11,7 @@ import java.util.UUID;
 
 public class Messages {
 
-    private static final int COPY_EVENT_VERSION = 15;
+    private static final Version COPY_EVENT_VERSION = new Version(1, 15, 0);
 
     /** commandLabel */
     public static final A1<String> HISTORY_USAGE = label -> Component.translatable("namehistorian.history_usage")
@@ -65,7 +65,7 @@ public class Messages {
 
     private static Component copyableText(String str) {
         // Versions below 1.15 don't support copy event, gracefully degrade functionality
-        if (NameHistorianSpigot.MAJOR_SPIGOT_VERSION < COPY_EVENT_VERSION) {
+        if (NameHistorianSpigot.VERSION.compareTo(COPY_EVENT_VERSION) < 0) {
             return Component.text(str);
         }
         return Component.text(str)

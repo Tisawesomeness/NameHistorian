@@ -30,11 +30,10 @@ import java.util.stream.Collectors;
 public final class NameHistorianSpigot extends JavaPlugin {
 
     /**
-     * The major version of the Minecraft server this plugin is running on.
-     * As an example, both "1.20" and "1.20.5" have major version 20.
-     * Defaults to 8 if the version could not be parsed.
+     * The version of the Minecraft server this plugin is running on.
+     * Defaults to 1.8.9 if the version could not be parsed.
      */
-    public static final int MAJOR_SPIGOT_VERSION = BukkitUtil.parseVersion(Bukkit.getBukkitVersion()).orElse(8);
+    public static final Version VERSION = Version.parseBukkitVersion(Bukkit.getBukkitVersion()).orElse(new Version(1, 8, 9));
 
     private static final Component PREFIX = Component.join(JoinConfiguration.noSeparators(),
             Component.text("[").color(NamedTextColor.GRAY),

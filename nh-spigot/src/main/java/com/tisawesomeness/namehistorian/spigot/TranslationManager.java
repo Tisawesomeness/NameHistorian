@@ -25,7 +25,7 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public class TranslationManager {
 
-    private static final int LOCALE_METHOD_CHANGE_VERSION = 12;
+    private static final Version LOCALE_METHOD_CHANGE_VERSION = new Version(1, 12, 0);
 
     private final NameHistorianSpigot plugin;
     // Null until first loadTranslations()
@@ -267,7 +267,7 @@ public class TranslationManager {
         return plugin.getNHConfig().getDefaultLocale();
     }
     private static String getLocale(Player player) {
-        if (NameHistorianSpigot.MAJOR_SPIGOT_VERSION < LOCALE_METHOD_CHANGE_VERSION) {
+        if (NameHistorianSpigot.VERSION.compareTo(LOCALE_METHOD_CHANGE_VERSION) < 0) {
             @SuppressWarnings("deprecation") // not deprecated in old versions
             String locale = player.spigot().getLocale();
             return locale;
